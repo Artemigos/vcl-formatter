@@ -7,5 +7,4 @@ edition = "2021"
 
 [dependencies]
 tree-sitter = "~0.20.3"
-# TODO: automate getting this dependency with Makefile (need to run make/npm)
-tree-sitter-vcl = { path = "../varnishls/vendor/tree-sitter-vcl" }
+tree-sitter-vcl = { path = "vendor/varnishls/vendor/tree-sitter-vcl" }
