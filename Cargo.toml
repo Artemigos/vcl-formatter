@@ -1,0 +1,11 @@
+[package]
+name = "vcl-formatter"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tree-sitter = "~0.20.3"
+# TODO: automate getting this dependency with Makefile (need to run make/npm)
+tree-sitter-vcl = { path = "../varnishls/vendor/tree-sitter-vcl" }
