@@ -24,6 +24,7 @@ pub trait Emitter {
     fn acl_mask_op(&mut self);
     fn sub_keyword(&mut self);
     fn set_keyword(&mut self);
+    fn call_keyword(&mut self);
     fn call_ident(&mut self, ident: &str);
     fn l_paren(&mut self);
     fn r_paren(&mut self);
@@ -304,6 +305,12 @@ impl<'a> Emitter for StandardEmitter<'a> {
         if self.new_line_pending {
             self.line();
         }
+    }
+
+    fn call_keyword(&mut self) {
+        self.flush_preceding_whitespace();
+        write!(self.write, "call").unwrap();
+        self.needs_whitespace = true;
     }
 }
 

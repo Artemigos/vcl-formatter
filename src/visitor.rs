@@ -47,6 +47,7 @@ pub fn visit_tree(tree: &Tree, source: &[u8], e: &mut dyn Emitter) {
         "if",
         "else",
         "return",
+        "call",
         "{",
         "}",
         ";",
@@ -109,6 +110,7 @@ pub fn visit_tree(tree: &Tree, source: &[u8], e: &mut dyn Emitter) {
             "if" => e.if_keyword(),
             "else" => e.else_keyword(),
             "return" => e.return_keyword(),
+            "call" => e.call_keyword(),
             "{" => e.body_start(),
             "}" => {
                 e.body_end();
