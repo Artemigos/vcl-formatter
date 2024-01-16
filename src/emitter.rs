@@ -40,8 +40,8 @@ pub trait Emitter {
 }
 
 pub struct StandardEmitter<'a> {
-    pub write: &'a mut dyn Write,
-    pub indent_step: usize,
+    write: &'a mut dyn Write,
+    indent_step: usize,
     needs_whitespace: bool,
     new_line: bool,
     current_indent: usize,

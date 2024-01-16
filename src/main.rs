@@ -20,7 +20,7 @@ struct Args {
 
     /// Number of spaces to use for indentation
     #[arg(short, long, default_value_t = 4)]
-    indent_size: usize,
+    indent: usize,
 }
 
 fn main() {
@@ -39,6 +39,6 @@ fn main() {
     let tree = parser.parse(&data, None).unwrap();
 
     let mut stdout = std::io::stdout().lock();
-    let mut e = emitter::StandardEmitter::new(&mut stdout, args.indent_size);
+    let mut e = emitter::StandardEmitter::new(&mut stdout, args.indent);
     visitor::visit_tree(&tree, &data, &mut e);
 }
