@@ -1,17 +1,29 @@
 mod emitter;
 mod visitor;
 
+use clap::Parser as ClapParser;
 use tree_sitter::Parser;
 use tree_sitter_vcl;
 
 #[cfg(test)]
 const EXAMPLE: &[u8] = include_bytes!("../example.vcl");
 
+/// Formatter for VCL code
+#[derive(ClapParser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// VCL file to format
+    #[arg()]
+    file: String,
+
+    /// Number of spaces to use for indentation
+    #[arg(short, long, default_value_t = 4)]
+    indent_size: usize,
+}
+
 fn main() {
-    let args = std::env::args();
-    let args: Vec<_> = args.collect();
-    assert_eq!(args.len(), 2, "Exactly 1 argument required - the VCL file path.");
-    let data = std::fs::read(args[1].as_str()).unwrap();
+    let args = Args::parse();
+    let data = std::fs::read(args.file.as_str()).unwrap();
 
     let lang = tree_sitter_vcl::language();
     let mut parser = Parser::new();
@@ -19,6 +31,6 @@ fn main() {
     let tree = parser.parse(&data, None).unwrap();
 
     let mut stdout = std::io::stdout().lock();
-    let mut e = emitter::StandardEmitter::new(&mut stdout, 4);
+    let mut e = emitter::StandardEmitter::new(&mut stdout, args.indent_size);
     visitor::visit_tree(&tree, &data, &mut e);
 }

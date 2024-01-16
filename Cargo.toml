@@ -2,9 +2,11 @@
 name = "vcl-formatter"
 version = "0.1.0"
 edition = "2021"
+authors = ["Łukasz Klimek"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+clap = { version = "4.4.17", features = ["derive"] }
 tree-sitter = "~0.20.3"
 tree-sitter-vcl = { path = "vendor/varnishls/vendor/tree-sitter-vcl" }
