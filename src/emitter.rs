@@ -44,10 +44,11 @@ pub struct StandardEmitter<'a> {
     indent_step: usize,
     needs_whitespace: bool,
     new_line: bool,
-    current_indent: usize,
     in_string_list: bool,
     new_line_pending: bool,
     allow_line_break: bool,
+    nest_level: usize,
+    materialized_nest_levels: Vec<usize>,
 }
 
 impl<'a> StandardEmitter<'a> {
@@ -57,29 +58,29 @@ impl<'a> StandardEmitter<'a> {
             indent_step,
             needs_whitespace: false,
             new_line: true,
-            current_indent: 0,
             in_string_list: false,
             new_line_pending: false,
             allow_line_break: false,
+            nest_level: 0,
+            materialized_nest_levels: vec![],
         }
     }
 
     fn flush_preceding_whitespace(&mut self) {
         if self.new_line_pending {
-            writeln!(self.write).unwrap();
+            self.line();
+        }
+
+        if self.new_line {
+            if self.nest_level > self.last_nest() {
+                self.materialized_nest_levels.push(self.nest_level);
+            }
+
             write!(
                 self.write,
                 "{:<i$}",
                 "",
-                i = self.indent_step * self.current_indent
-            )
-            .unwrap();
-        } else if self.new_line {
-            write!(
-                self.write,
-                "{:<i$}",
-                "",
-                i = self.indent_step * self.current_indent
+                i = self.indent_step * self.materialized_nest_levels.len()
             )
             .unwrap();
         } else if self.needs_whitespace {
@@ -95,6 +96,26 @@ impl<'a> StandardEmitter<'a> {
         writeln!(self.write).unwrap();
         self.new_line = true;
         self.new_line_pending = false;
+    }
+
+    fn increase_nest(&mut self) {
+        self.nest_level += 1;
+    }
+
+    fn decrease_nest(&mut self) {
+        assert!(self.nest_level > 0);
+        if self.last_nest() == self.nest_level {
+            self.materialized_nest_levels.pop();
+        }
+        self.nest_level -= 1;
+    }
+
+    fn last_nest(&self) -> usize {
+        if self.materialized_nest_levels.len() == 0 {
+            0
+        } else {
+            self.materialized_nest_levels[self.materialized_nest_levels.len() - 1]
+        }
     }
 }
 
@@ -117,7 +138,7 @@ impl<'a> Emitter for StandardEmitter<'a> {
 
         if self.in_string_list {
             self.in_string_list = false;
-            self.current_indent -= 1;
+            self.decrease_nest();
         }
     }
 
@@ -161,11 +182,11 @@ impl<'a> Emitter for StandardEmitter<'a> {
         self.needs_whitespace = false;
         write!(self.write, " {{").unwrap();
         self.new_line_pending = true;
-        self.current_indent += 1;
+        self.increase_nest();
     }
 
     fn body_end(&mut self) {
-        self.current_indent -= 1;
+        self.decrease_nest();
         self.flush_preceding_whitespace();
         write!(self.write, "}}").unwrap();
         self.new_line_pending = true;
@@ -179,7 +200,7 @@ impl<'a> Emitter for StandardEmitter<'a> {
     fn string_list_entry(&mut self, entry: &str) {
         if !self.in_string_list {
             self.in_string_list = true;
-            self.current_indent += 1;
+            self.increase_nest();
         } else {
             self.line();
         }
@@ -244,10 +265,12 @@ impl<'a> Emitter for StandardEmitter<'a> {
     fn l_paren(&mut self) {
         self.flush_preceding_whitespace();
         write!(self.write, "(").unwrap();
+        self.increase_nest();
     }
 
     fn r_paren(&mut self) {
         self.needs_whitespace = false;
+        self.decrease_nest();
         write!(self.write, ")").unwrap();
     }
 
