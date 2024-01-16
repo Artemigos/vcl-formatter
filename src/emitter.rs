@@ -1,6 +1,6 @@
 use std::io::Write;
 
-// TODO: allow line breaks in certain places
+// TODO: control indent after optional line breaks
 
 pub trait Emitter {
     fn vcl_keyword(&mut self);
@@ -47,6 +47,7 @@ pub struct StandardEmitter<'a> {
     current_indent: usize,
     in_string_list: bool,
     new_line_pending: bool,
+    allow_line_break: bool,
 }
 
 impl<'a> StandardEmitter<'a> {
@@ -59,6 +60,7 @@ impl<'a> StandardEmitter<'a> {
             current_indent: 0,
             in_string_list: false,
             new_line_pending: false,
+            allow_line_break: false,
         }
     }
 
@@ -86,6 +88,7 @@ impl<'a> StandardEmitter<'a> {
         self.new_line = false;
         self.needs_whitespace = false;
         self.new_line_pending = false;
+        self.allow_line_break = false;
     }
 
     fn line(&mut self) {
@@ -194,6 +197,7 @@ impl<'a> Emitter for StandardEmitter<'a> {
         self.needs_whitespace = false;
         write!(self.write, " {}", op).unwrap();
         self.needs_whitespace = true;
+        self.allow_line_break = true;
     }
 
     fn backend_keyword(&mut self) {
@@ -250,6 +254,7 @@ impl<'a> Emitter for StandardEmitter<'a> {
         self.needs_whitespace = false;
         write!(self.write, ",").unwrap();
         self.needs_whitespace = true;
+        self.allow_line_break = true;
     }
 
     fn unset_keyword(&mut self) {
@@ -298,7 +303,12 @@ impl<'a> Emitter for StandardEmitter<'a> {
             if how_many > 1 {
                 self.line();
             }
+        } else if self.allow_line_break {
+            self.line();
         }
+
+        self.new_line_pending = false;
+        self.allow_line_break = false;
     }
 
     fn file_end(&mut self) {
