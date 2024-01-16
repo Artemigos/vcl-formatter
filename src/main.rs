@@ -1,6 +1,8 @@
 mod emitter;
 mod visitor;
 
+use std::io::Read;
+
 use clap::Parser as ClapParser;
 use tree_sitter::Parser;
 use tree_sitter_vcl;
@@ -23,7 +25,13 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let data = std::fs::read(args.file.as_str()).unwrap();
+    let data = if args.file == "-" {
+        let mut buf = Vec::new();
+        let _ = std::io::stdin().lock().read_to_end(&mut buf);
+        buf
+    } else {
+        std::fs::read(args.file.as_str()).unwrap()
+    };
 
     let lang = tree_sitter_vcl::language();
     let mut parser = Parser::new();
