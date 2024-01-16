@@ -180,9 +180,10 @@ impl<'a> Emitter for StandardEmitter<'a> {
         if !self.in_string_list {
             self.in_string_list = true;
             self.current_indent += 1;
+        } else {
+            self.line();
         }
 
-        self.line();
         self.flush_preceding_whitespace();
         write!(self.write, "{}", entry).unwrap();
     }
