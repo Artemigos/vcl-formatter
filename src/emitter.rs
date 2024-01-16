@@ -670,11 +670,79 @@ mod test {
         e.body_end();
         e.newlines(2);
 
-        // TODO: if statement
-        // TODO: set statement
-        // TODO: set statement
-        // TODO: set statement
-        // TODO: set statement
+        // if statement
+        e.if_keyword();
+        e.l_paren();
+        e.expression("req.url");
+        e.infix_operator("~");
+        e.expression(
+            "\"(\\?|&)(utm_source|utm_medium|utm_campaign|utm_content|gclid|cx|ie|cof|siteurl)=\"",
+        );
+        e.r_paren();
+        e.body_start();
+        e.newlines(1);
+
+        // set statement
+        e.set_keyword();
+        e.ident("req.url");
+        e.infix_operator("=");
+        e.call_ident("regsuball");
+        e.l_paren();
+        e.expression("req.url");
+        e.comma();
+        e.expression("\"&(utm_source|utm_medium|utm_campaign|utm_content|gclid|cx|ie|cof|siteurl)=([A-z0-9_\\-\\.%25]+)\"");
+        e.comma();
+        e.expression("\"\"");
+        e.r_paren();
+        e.semicolon();
+        e.newlines(1);
+
+        // set statement
+        e.set_keyword();
+        e.ident("req.url");
+        e.infix_operator("=");
+        e.call_ident("regsuball");
+        e.l_paren();
+        e.expression("req.url");
+        e.comma();
+        e.expression("\"\\?(utm_source|utm_medium|utm_campaign|utm_content|gclid|cx|ie|cof|siteurl)=([A-z0-9_\\-\\.%25]+)\"");
+        e.comma();
+        e.expression("\"?\"");
+        e.r_paren();
+        e.semicolon();
+        e.newlines(1);
+
+        // set statement
+        e.set_keyword();
+        e.ident("req.url");
+        e.infix_operator("=");
+        e.call_ident("regsub");
+        e.l_paren();
+        e.expression("req.url");
+        e.comma();
+        e.expression("\"\\?&\"");
+        e.comma();
+        e.expression("\"?\"");
+        e.r_paren();
+        e.semicolon();
+        e.newlines(1);
+
+        // set statement
+        e.set_keyword();
+        e.ident("req.url");
+        e.infix_operator("=");
+        e.call_ident("regsub");
+        e.l_paren();
+        e.expression("req.url");
+        e.comma();
+        e.expression("\"\\?$\"");
+        e.comma();
+        e.expression("\"\"");
+        e.r_paren();
+        e.semicolon();
+        e.newlines(1);
+        e.body_end();
+        e.newlines(2);
 
         // if statement
         e.if_keyword();
@@ -729,26 +797,211 @@ mod test {
         e.comment("/*\n        test\n    */");
         e.newlines(2);
 
-        // TODO: if statement
-        // TODO: return statement
+        // if statement
+        e.if_keyword();
+        e.l_paren();
+        e.expression("req.method");
+        e.infix_operator("!=");
+        e.expression("\"GET\"");
+        e.infix_operator("&&");
+        e.expression("req.method");
+        e.infix_operator("!=");
+        e.expression("\"HEAD\"");
+        e.infix_operator("&&");
+        e.expression("req.method");
+        e.infix_operator("!=");
+        e.expression("\"PUT\"");
+        e.infix_operator("&&");
+        e.expression("req.method");
+        e.infix_operator("!=");
+        e.expression("\"POST\"");
+        e.infix_operator("&&");
+        e.expression("req.method");
+        e.infix_operator("!=");
+        e.expression("\"TRACE\"");
+        e.infix_operator("&&");
+        e.expression("req.method");
+        e.infix_operator("!=");
+        e.expression("\"OPTIONS\"");
+        e.infix_operator("&&");
+        e.expression("req.method");
+        e.infix_operator("!=");
+        e.expression("\"PATCH\"");
+        e.infix_operator("&&");
+        e.expression("req.method");
+        e.infix_operator("!=");
+        e.expression("\"DELETE\"");
+        e.r_paren();
+        e.body_start();
+        e.newlines(1);
 
-        // TODO: if statement
-        // TODO: return statement
+        // return statement
+        e.return_keyword();
+        e.l_paren();
+        e.varnish_step_keyword("pipe");
+        e.r_paren();
+        e.semicolon();
+        e.newlines(1);
+        e.body_end();
+        e.newlines(2);
 
-        // TODO: if statement
-        // TODO: unset statement
-        // TODO: return statement
+        // if statement
+        e.if_keyword();
+        e.l_paren();
+        e.expression("req.method");
+        e.infix_operator("!=");
+        e.expression("\"GET\"");
+        e.infix_operator("&&");
+        e.expression("req.method");
+        e.infix_operator("!=");
+        e.expression("\"HEAD\"");
+        e.r_paren();
+        e.body_start();
+        e.newlines(1);
 
-        // TODO: set statement
-        // TODO: set statement
-        // TODO: set statement
-        // TODO: set statement
-        // TODO: set statement
-        // TODO: set statement
+        // return statement
+        e.return_keyword();
+        e.l_paren();
+        e.varnish_step_keyword("pass");
+        e.r_paren();
+        e.semicolon();
+        e.newlines(1);
+        e.body_end();
+        e.newlines(2);
 
-        // TODO: if statement
-        // TODO: unset statement
+        // if statement
+        e.if_keyword();
+        e.l_paren();
+        e.expression("req.url");
+        e.infix_operator("~");
+        e.expression("\"^[^?]*\\.(7z|avi|bmp|bz2|css|csv|doc|docx|eot|flac|flv|gif|gz|ico|jpeg|jpg|js|less|mka|mkv|mov|mp3|mp4|mpeg|mpg|odt|ogg|ogm|opus|otf|pdf|png|ppt|pptx|rar|rtf|svg|svgz|swf|tar|tbz|tgz|ttf|txt|txz|wav|webm|webp|woff|woff2|xls|xlsx|xml|xz|zip)(\\?.*)?$\"");
+        e.r_paren();
+        e.body_start();
+        e.newlines(1);
 
+        // unset statement
+        e.unset_keyword();
+        e.ident("req.http.Cookie");
+        e.semicolon();
+        e.newlines(1);
+
+        // return statement
+        e.return_keyword();
+        e.l_paren();
+        e.varnish_step_keyword("hash");
+        e.r_paren();
+        e.semicolon();
+        e.newlines(1);
+        e.body_end();
+        e.newlines(2);
+
+        // set statement
+        e.set_keyword();
+        e.ident("req.http.Cookie");
+        e.infix_operator("=");
+        e.call_ident("regsuball");
+        e.l_paren();
+        e.expression("req.http.Cookie");
+        e.comma();
+        e.expression("\"(__utm|_ga|_opt)[a-z_]*=[^;]+(; )?\"");
+        e.comma();
+        e.expression("\"\"");
+        e.r_paren();
+        e.semicolon();
+        e.newlines(1);
+
+        // set statement
+        e.set_keyword();
+        e.ident("req.http.Cookie");
+        e.infix_operator("=");
+        e.call_ident("regsuball");
+        e.l_paren();
+        e.expression("req.http.Cookie");
+        e.comma();
+        e.expression("\"(__)?hs[a-z_\\-]+=[^;]+(; )?\"");
+        e.comma();
+        e.expression("\"\"");
+        e.r_paren();
+        e.semicolon();
+        e.newlines(1);
+
+        // set statement
+        e.set_keyword();
+        e.ident("req.http.Cookie");
+        e.infix_operator("=");
+        e.call_ident("regsuball");
+        e.l_paren();
+        e.expression("req.http.Cookie");
+        e.comma();
+        e.expression("\"hubspotutk=[^;]+(; )?\"");
+        e.comma();
+        e.expression("\"\"");
+        e.r_paren();
+        e.semicolon();
+        e.newlines(1);
+
+        // set statement
+        e.set_keyword();
+        e.ident("req.http.Cookie");
+        e.infix_operator("=");
+        e.call_ident("regsuball");
+        e.l_paren();
+        e.expression("req.http.Cookie");
+        e.comma();
+        e.expression("\"_hj[a-zA-Z]+=[^;]+(; )?\"");
+        e.comma();
+        e.expression("\"\"");
+        e.r_paren();
+        e.semicolon();
+        e.newlines(1);
+
+        // set statement
+        e.set_keyword();
+        e.ident("req.http.Cookie");
+        e.infix_operator("=");
+        e.call_ident("regsuball");
+        e.l_paren();
+        e.expression("req.http.Cookie");
+        e.comma();
+        e.expression("\"(NID|DSID|__gads|GED_PLAYLIST_ACTIVITY|ACLK_DATA|ANID|AID|IDE|TAID|_gcl_[a-z]*|FLC|RUL|PAIDCONTENT|1P_JAR|Conversion|VISITOR_INFO1[a-z_]*)=[^;]+(; )?\"");
+        e.comma();
+        e.expression("\"\"");
+        e.r_paren();
+        e.semicolon();
+        e.newlines(1);
+
+        // set statement
+        e.set_keyword();
+        e.ident("req.http.Cookie");
+        e.infix_operator("=");
+        e.call_ident("regsuball");
+        e.l_paren();
+        e.expression("req.http.Cookie");
+        e.comma();
+        e.expression("\"^;\\s*\"");
+        e.comma();
+        e.expression("\"\"");
+        e.r_paren();
+        e.semicolon();
+        e.newlines(2);
+
+        // if statement
+        e.if_keyword();
+        e.l_paren();
+        e.expression("req.http.cookie");
+        e.infix_operator("~");
+        e.expression("\"^\\s*$\"");
+        e.r_paren();
+        e.body_start();
+        e.newlines(1);
+
+        // unset statement
+        e.unset_keyword();
+        e.ident("req.http.cookie");
+        e.semicolon();
+        e.newlines(1);
+        e.body_end();
+        e.newlines(1);
         e.body_end();
         e.newlines(2);
 
