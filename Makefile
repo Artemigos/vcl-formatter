@@ -21,3 +21,7 @@ install: $(PREFIX)/vcl-formatter
 uninstall:
 	rm -f "$(PREFIX)/vcl-formatter"
 .PHONY: uninstall
+
+bench: target/release/vcl-formatter
+	hyperfine -N './target/release/vcl-formatter -t 0 example.vcl' './target/release/vcl-formatter -t 1 example.vcl' './target/release/vcl-formatter -t 2 example.vcl'
+.PHONY: bench
