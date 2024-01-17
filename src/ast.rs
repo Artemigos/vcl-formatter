@@ -1,5 +1,6 @@
 pub type SourceFile<'a> = Vec<TopLevelDeclaration<'a>>;
 
+#[derive(Debug)]
 pub enum TopLevelDeclaration<'a> {
     VclVersion(&'a str),
     Import {
@@ -13,7 +14,7 @@ pub enum TopLevelDeclaration<'a> {
     },
     Backend {
         name: &'a str,
-        properties: Vec<BackendProperty<'a>>,
+        properties: Option<Vec<BackendProperty<'a>>>,
     },
     Probe {
         name: &'a str,
@@ -25,22 +26,26 @@ pub enum TopLevelDeclaration<'a> {
     },
 }
 
+#[derive(Debug)]
 pub struct AclEntry<'a> {
     pub value: &'a str,
-    pub mask: Option<u8>,
+    pub mask: Option<&'a str>,
 }
 
+#[derive(Debug)]
 pub struct BackendProperty<'a> {
     pub name: &'a str,
     pub values: Vec<BackendValue<'a>>,
 }
 
+#[derive(Debug)]
 pub enum BackendValue<'a> {
     Expression(Expression<'a>),
     StringList(Vec<&'a str>),
     Composite(Vec<BackendProperty<'a>>),
 }
 
+#[derive(Debug)]
 pub enum Statement<'a> {
     Set {
         ident: &'a str,
@@ -59,6 +64,7 @@ pub enum Statement<'a> {
     New,       // TODO:
 }
 
+#[derive(Debug)]
 pub enum AssignOperator {
     Assign,
     AddAssign,
@@ -68,10 +74,10 @@ pub enum AssignOperator {
 }
 
 // TODO:
+#[derive(Debug)]
 pub enum Expression<'a> {
     Ident(&'a str),
-    // Number(&'a str),
-    // String(&'a str),
+    Literal(&'a str),
     // BinaryOp,
     // UnaryOp,
     // Call,

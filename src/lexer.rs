@@ -1,8 +1,8 @@
 use logos::Logos;
 
-#[derive(Logos, Debug, PartialEq)]
+#[derive(Logos, Debug, PartialEq, Copy, Clone)]
 #[logos(skip r"[ \t]+")]
-pub enum Token {
+pub enum Token<'a> {
     #[token("acl")]
     Acl,
 
@@ -51,25 +51,35 @@ pub enum Token {
     #[token("new")]
     New,
 
-    #[regex(r"-?(0|[1-9]\d*)(\.\d+)?")]
-    Number,
+    #[token("true")]
+    #[token("false")]
+    Bool(&'a str),
 
-    #[token(";")]
-    Semicolon,
+    #[regex(r"-?(0|[1-9]\d*)(\.\d+)?")]
+    Number(&'a str),
+
+    #[regex(r"-?(0|[1-9]\d*)(\.\d+)?(ms|s|m|h|d|w|y)")]
+    Duration(&'a str),
+
+    #[regex(r"-?(0|[1-9]\d*)(\.\d+)?(B|KB|MB|GB|TB)")]
+    Bytes(&'a str),
 
     #[regex(r#""[^"\r\n]*""#)]
     #[regex(r#""""([^"]|"[^"]|""[^"])*""""#)]
     #[regex(r#"\{"([^"]|"[^\}])*"\}"#)]
-    String,
+    String(&'a str),
 
     #[regex(r"[a-zA-Z_][\w\-]*(\.[a-zA-Z_][\w\-]*)*")]
-    Ident,
+    Ident(&'a str),
+
+    #[token(";")]
+    Semicolon,
 
     #[token("{")]
-    LBracket,
+    LBrace,
 
     #[token("}")]
-    RBracket,
+    RBrace,
 
     #[token("(")]
     LParen,
@@ -165,15 +175,15 @@ pub enum Token {
     BitwiseOr,
 
     #[regex(r"(//|#).*")]
-    LineComment,
+    LineComment(&'a str),
 
     #[regex(r"/\*([^*]|\*[^/])*\*/")]
-    MultilineComment,
+    MultilineComment(&'a str),
 
     #[regex(r#"C\{([^\}]|\}[^C])*\}C"#)]
-    InlineCCode,
+    InlineCCode(&'a str),
 
     // maybe?
     #[regex(r"(\r\n|\n|\r)")]
-    Newline,
+    Newline(&'a str),
 }

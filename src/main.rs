@@ -3,6 +3,7 @@
 mod ast;
 mod emitter;
 mod lexer;
+mod parser;
 mod visitor;
 
 use std::io::Read;
@@ -70,7 +71,7 @@ fn main() {
             loop {
                 let token = lex.next();
                 if let Some(Ok(tok)) = token {
-                    if how_many_newlines > 0 && tok != lexer::Token::Newline {
+                    if how_many_newlines > 0 && !matches!(tok, lexer::Token::Newline(_)) {
                         e.newlines(how_many_newlines);
                         how_many_newlines = 0;
                     }
@@ -91,12 +92,12 @@ fn main() {
                         lexer::Token::Else => e.else_keyword(),
                         lexer::Token::Return => e.return_keyword(),
                         lexer::Token::New => e.new_keyword(),
-                        lexer::Token::Number => e.number(lex.slice()),
+                        lexer::Token::Number(s) => e.number(s),
                         lexer::Token::Semicolon => e.semicolon(),
-                        lexer::Token::String => e.string(lex.slice()),
-                        lexer::Token::Ident => e.ident(lex.slice()),
-                        lexer::Token::LBracket => e.body_start(),
-                        lexer::Token::RBracket => e.body_end(),
+                        lexer::Token::String(s) => e.string(s),
+                        lexer::Token::Ident(s) => e.ident(s),
+                        lexer::Token::LBrace => e.body_start(),
+                        lexer::Token::RBrace => e.body_end(),
                         lexer::Token::LParen => e.l_paren(),
                         lexer::Token::RParen => e.r_paren(),
                         lexer::Token::Dot => e.prefix_operator("."),
@@ -128,10 +129,10 @@ fn main() {
                         lexer::Token::Modulo => e.infix_operator("%"),
                         lexer::Token::BitwiseAnd => e.infix_operator("&"),
                         lexer::Token::BitwiseOr => e.infix_operator("|"),
-                        lexer::Token::LineComment => e.comment(lex.slice()),
-                        lexer::Token::MultilineComment => e.comment(lex.slice()),
-                        lexer::Token::InlineCCode => todo!(),
-                        lexer::Token::Newline => how_many_newlines += 1,
+                        lexer::Token::LineComment(s) => e.comment(s),
+                        lexer::Token::MultilineComment(s) => e.comment(s),
+                        lexer::Token::InlineCCode(_) => todo!(),
+                        lexer::Token::Newline(_) => how_many_newlines += 1,
                         x => panic!("unknown token: {:?} \"{}\"", x, lex.slice()),
                     }
                 } else {
@@ -148,6 +149,26 @@ fn main() {
                     break;
                 }
             }
+        }
+    } else if args.test == 3 {
+        let data_str = std::str::from_utf8(&data).unwrap();
+        let mut lex = lexer::Token::lexer(data_str);
+        let tokens: Vec<_> = lex
+            .map(|t| t.unwrap())
+            .filter(|t| {
+                !matches!(
+                    t,
+                    lexer::Token::Newline(_) |
+                    lexer::Token::LineComment(_) |
+                    lexer::Token::MultilineComment(_) |
+                    lexer::Token::InlineCCode(_)
+                )
+            })
+            .collect();
+        if args.print {
+            println!("{:?}", tokens[69]);
+            let ast = parser::vcl::source_file(&tokens).unwrap();
+            println!("{:?}", ast);
         }
     } else {
         panic!("unknown test number: {}", args.test);
