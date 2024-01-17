@@ -1,5 +1,6 @@
 #![allow(unused)]
 
+mod ast;
 mod emitter;
 mod lexer;
 mod visitor;
