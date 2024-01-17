@@ -1,7 +1,7 @@
 use logos::Logos;
 
 #[derive(Logos, Debug, PartialEq)]
-#[logos(skip r"[ \t\n\f]+")]
+#[logos(skip r"[ \t]+")]
 pub enum Token {
     #[token("acl")]
     Acl,
@@ -51,16 +51,18 @@ pub enum Token {
     #[token("new")]
     New,
 
-    #[regex(r"-?[0-9]+(\.[-0-9]+)?")]
+    #[regex(r"-?(0|[1-9]\d*)(\.\d+)?")]
     Number,
 
     #[token(";")]
     Semicolon,
 
-    #[regex(r#""[^"]*""#)]
+    #[regex(r#""[^"\r\n]*""#)]
+    #[regex(r#""""([^"]|"[^"]|""[^"])*""""#)]
+    #[regex(r#"\{"([^"]|"[^\}])*"\}"#)]
     String,
 
-    #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*")]
+    #[regex(r"[a-zA-Z_][\w\-]*(\.[a-zA-Z_][\w\-]*)*")]
     Ident,
 
     #[token("{")]
@@ -91,7 +93,7 @@ pub enum Token {
     Minus,
 
     #[token("*")]
-    Times,
+    Multiply,
 
     #[token("/")]
     Divide,
@@ -126,9 +128,52 @@ pub enum Token {
     #[token("<=")]
     LesserEquals,
 
+    #[token("++")]
+    Increment,
+
+    #[token("--")]
+    Decrement,
+
+    #[token("<<")]
+    ShiftLeft,
+
+    #[token(">>")]
+    ShiftRight,
+
+    #[token("+=")]
+    AddAssign,
+
+    #[token("-=")]
+    SubtractAssign,
+
+    #[token("*=")]
+    MultiplyAssign,
+
+    #[token("/=")]
+    DivideAssign,
+
+    #[token("!~")]
+    NotMatches,
+
+    #[token("%")]
+    Modulo,
+
+    #[token("&")]
+    BitwiseAnd,
+
+    #[token("|")]
+    BitwiseOr,
+
     #[regex(r"(//|#).*")]
     LineComment,
 
     #[regex(r"/\*([^*]|\*[^/])*\*/")]
     MultilineComment,
+
+    #[regex(r#"C\{([^\}]|\}[^C])*\}C"#)]
+    InlineCCode,
+
+    // maybe?
+    #[regex(r"(\r\n|\n|\r)")]
+    Newline,
 }

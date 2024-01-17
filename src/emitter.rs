@@ -303,6 +303,10 @@ impl<'a> Emitter for StandardEmitter<'a> {
     fn call_keyword(&mut self) {
         self.keyword("call");
     }
+
+    fn new_keyword(&mut self) {
+        self.keyword("new");
+    }
 }
 
 #[cfg(test)]
