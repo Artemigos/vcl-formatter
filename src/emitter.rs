@@ -15,17 +15,14 @@ pub trait Emitter {
     fn body_start(&mut self);
     fn body_end(&mut self);
     fn prefix_operator(&mut self, op: &str);
-    fn string_list_entry(&mut self, entry: &str);
-    fn expression(&mut self, expr: &str);
     fn infix_operator(&mut self, op: &str);
     fn backend_keyword(&mut self);
     fn none_keyword(&mut self);
     fn acl_keyword(&mut self);
-    fn acl_mask_op(&mut self);
     fn sub_keyword(&mut self);
     fn set_keyword(&mut self);
     fn call_keyword(&mut self);
-    fn call_ident(&mut self, ident: &str);
+    fn new_keyword(&mut self);
     fn l_paren(&mut self);
     fn r_paren(&mut self);
     fn comma(&mut self);
@@ -33,7 +30,6 @@ pub trait Emitter {
     fn if_keyword(&mut self);
     fn else_keyword(&mut self);
     fn return_keyword(&mut self);
-    fn varnish_step_keyword(&mut self, step: &str);
     fn comment(&mut self, comment: &str);
     fn newlines(&mut self, how_many: usize);
     fn file_end(&mut self);
@@ -45,8 +41,10 @@ pub struct StandardEmitter<'a> {
     needs_whitespace: bool,
     new_line: bool,
     in_string_list: bool,
+    in_acl: bool,
     new_line_pending: bool,
     allow_line_break: bool,
+    ident_before_lparen: bool,
     nest_level: usize,
     materialized_nest_levels: Vec<usize>,
 }
@@ -59,8 +57,10 @@ impl<'a> StandardEmitter<'a> {
             needs_whitespace: false,
             new_line: true,
             in_string_list: false,
+            in_acl: false,
             new_line_pending: false,
             allow_line_break: false,
+            ident_before_lparen: false,
             nest_level: 0,
             materialized_nest_levels: vec![],
         }
@@ -117,13 +117,17 @@ impl<'a> StandardEmitter<'a> {
             self.materialized_nest_levels[self.materialized_nest_levels.len() - 1]
         }
     }
+
+    fn keyword(&mut self, kw: &str) {
+        self.flush_preceding_whitespace();
+        write!(self.write, "{kw}").unwrap();
+        self.needs_whitespace = true;
+    }
 }
 
 impl<'a> Emitter for StandardEmitter<'a> {
     fn vcl_keyword(&mut self) {
-        self.flush_preceding_whitespace();
-        write!(self.write, "vcl").unwrap();
-        self.needs_whitespace = true;
+        self.keyword("vcl");
     }
 
     fn number(&mut self, num: &str) {
@@ -143,9 +147,7 @@ impl<'a> Emitter for StandardEmitter<'a> {
     }
 
     fn include_keyword(&mut self) {
-        self.flush_preceding_whitespace();
-        write!(self.write, "include").unwrap();
-        self.needs_whitespace = true;
+        self.keyword("include");
     }
 
     fn string(&mut self, string: &str) {
@@ -155,27 +157,22 @@ impl<'a> Emitter for StandardEmitter<'a> {
     }
 
     fn import_keyword(&mut self) {
-        self.flush_preceding_whitespace();
-        write!(self.write, "import").unwrap();
-        self.needs_whitespace = true;
+        self.keyword("import");
     }
 
     fn ident(&mut self, ident: &str) {
         self.flush_preceding_whitespace();
         write!(self.write, "{}", ident).unwrap();
         self.needs_whitespace = true;
+        self.ident_before_lparen = true;
     }
 
     fn from_keyword(&mut self) {
-        self.flush_preceding_whitespace();
-        write!(self.write, "from").unwrap();
-        self.needs_whitespace = true;
+        self.keyword("from");
     }
 
     fn probe_keyword(&mut self) {
-        self.flush_preceding_whitespace();
-        write!(self.write, "probe").unwrap();
-        self.needs_whitespace = true;
+        self.keyword("probe");
     }
 
     fn body_start(&mut self) {
@@ -190,6 +187,7 @@ impl<'a> Emitter for StandardEmitter<'a> {
         self.flush_preceding_whitespace();
         write!(self.write, "}}").unwrap();
         self.new_line_pending = true;
+        self.in_acl = false;
     }
 
     fn prefix_operator(&mut self, op: &str) {
@@ -197,72 +195,44 @@ impl<'a> Emitter for StandardEmitter<'a> {
         write!(self.write, "{}", op).unwrap();
     }
 
-    fn string_list_entry(&mut self, entry: &str) {
-        if !self.in_string_list {
-            self.in_string_list = true;
-            self.increase_nest();
-        } else {
-            self.line();
-        }
-
-        self.flush_preceding_whitespace();
-        write!(self.write, "{}", entry).unwrap();
-    }
-
-    fn expression(&mut self, expr: &str) {
-        self.flush_preceding_whitespace();
-        write!(self.write, "{}", expr).unwrap();
-        self.needs_whitespace = true;
-    }
-
     fn infix_operator(&mut self, op: &str) {
         self.needs_whitespace = false;
-        write!(self.write, " {}", op).unwrap();
-        self.needs_whitespace = true;
-        self.allow_line_break = true;
+        if op == "/" && self.in_acl {
+            write!(self.write, "{op}").unwrap();
+        } else {
+            write!(self.write, " {op}").unwrap();
+            self.needs_whitespace = true;
+            self.allow_line_break = true;
+            self.ident_before_lparen = false;
+        }
     }
 
     fn backend_keyword(&mut self) {
-        self.flush_preceding_whitespace();
-        write!(self.write, "backend").unwrap();
-        self.needs_whitespace = true;
+        self.keyword("backend");
     }
 
     fn none_keyword(&mut self) {
-        self.flush_preceding_whitespace();
-        write!(self.write, "none").unwrap();
-        self.needs_whitespace = true;
+        self.keyword("none");
     }
 
     fn acl_keyword(&mut self) {
-        self.flush_preceding_whitespace();
-        write!(self.write, "acl").unwrap();
-        self.needs_whitespace = true;
-    }
-
-    fn acl_mask_op(&mut self) {
-        self.needs_whitespace = false;
-        write!(self.write, "/").unwrap();
+        self.keyword("acl");
+        self.in_acl = true;
     }
 
     fn sub_keyword(&mut self) {
-        self.flush_preceding_whitespace();
-        write!(self.write, "sub").unwrap();
-        self.needs_whitespace = true;
+        self.keyword("sub");
     }
 
     fn set_keyword(&mut self) {
-        self.flush_preceding_whitespace();
-        write!(self.write, "set").unwrap();
-        self.needs_whitespace = true;
-    }
-
-    fn call_ident(&mut self, ident: &str) {
-        self.flush_preceding_whitespace();
-        write!(self.write, "{}", ident).unwrap();
+        self.keyword("set");
     }
 
     fn l_paren(&mut self) {
+        if self.ident_before_lparen {
+            self.needs_whitespace = false;
+            self.ident_before_lparen = false;
+        }
         self.flush_preceding_whitespace();
         write!(self.write, "(").unwrap();
         self.increase_nest();
@@ -282,34 +252,23 @@ impl<'a> Emitter for StandardEmitter<'a> {
     }
 
     fn unset_keyword(&mut self) {
-        self.flush_preceding_whitespace();
-        write!(self.write, "unset").unwrap();
-        self.needs_whitespace = true;
+        self.keyword("unset");
     }
 
     fn if_keyword(&mut self) {
-        self.flush_preceding_whitespace();
-        write!(self.write, "if").unwrap();
-        self.needs_whitespace = true;
+        self.keyword("if");
+        self.ident_before_lparen = false;
     }
 
     fn else_keyword(&mut self) {
         self.new_line_pending = false;
         self.needs_whitespace = true;
-        self.flush_preceding_whitespace();
-        write!(self.write, "else").unwrap();
-        self.needs_whitespace = true;
+        self.keyword("else");
     }
 
     fn return_keyword(&mut self) {
-        self.flush_preceding_whitespace();
-        write!(self.write, "return").unwrap();
-        self.needs_whitespace = true;
-    }
-
-    fn varnish_step_keyword(&mut self, step: &str) {
-        self.flush_preceding_whitespace();
-        write!(self.write, "{}", step).unwrap();
+        self.keyword("return");
+        self.ident_before_lparen = false;
     }
 
     fn comment(&mut self, comment: &str) {
@@ -342,9 +301,7 @@ impl<'a> Emitter for StandardEmitter<'a> {
     }
 
     fn call_keyword(&mut self) {
-        self.flush_preceding_whitespace();
-        write!(self.write, "call").unwrap();
-        self.needs_whitespace = true;
+        self.keyword("call");
     }
 }
 

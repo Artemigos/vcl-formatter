@@ -69,9 +69,6 @@ pub fn visit_tree(tree: &Tree, source: &[u8], e: &mut dyn Emitter) {
         "ERROR",
     ];
 
-    let mut is_string_list = false;
-    let mut is_acl = false;
-    let mut is_call = false;
     let mut last_consumed = 0;
 
     let cursor = tree.walk();
@@ -100,10 +97,7 @@ pub fn visit_tree(tree: &Tree, source: &[u8], e: &mut dyn Emitter) {
             "probe" => e.probe_keyword(),
             "backend" => e.backend_keyword(),
             "none" => e.none_keyword(),
-            "acl" => {
-                e.acl_keyword();
-                is_acl = true;
-            }
+            "acl" => e.acl_keyword(),
             "sub" => e.sub_keyword(),
             "set" => e.set_keyword(),
             "unset" => e.unset_keyword(),
@@ -112,59 +106,30 @@ pub fn visit_tree(tree: &Tree, source: &[u8], e: &mut dyn Emitter) {
             "return" => e.return_keyword(),
             "call" => e.call_keyword(),
             "{" => e.body_start(),
-            "}" => {
-                e.body_end();
-                is_acl = false;
-            }
-            ";" => {
-                e.semicolon();
-                is_string_list = false;
-            }
+            "}" => e.body_end(),
+            ";" => e.semicolon(),
             "(" => e.l_paren(),
             ")" => e.r_paren(),
             "=" => e.infix_operator("="),
             "." => e.prefix_operator("."),
             "!" => e.prefix_operator("!"),
-            "/" => {
-                if is_acl {
-                    e.acl_mask_op();
-                }
-            }
+            "/" => e.infix_operator("/"),
             "," => e.comma(),
             "operator" => e.infix_operator(get(&node, source)),
             "number" => e.number(get(&node, source)),
-            "ident" | "nested_ident" => {
-                if is_call {
-                    e.call_ident(get(&node, source));
-                    is_call = false;
-                } else {
-                    e.ident(get(&node, source));
-                }
-            }
-            "string" => {
-                if is_string_list {
-                    e.string_list_entry(get(&node, source));
-                } else {
-                    e.string(get(&node, source));
-                }
-            }
-            "string_list" => {
-                is_string_list = true;
-            }
-            "literal" => e.expression(get(&node, source)),
-            "ident_call_expr" => {
-                is_call = true;
-            }
+            "ident" | "nested_ident" => e.ident(get(&node, source)),
+            "string" => e.string(get(&node, source)),
+            "literal" => e.number(get(&node, source)),
             "varnish_internal_return_methods" => {
                 let val = get(&node, source);
                 let spl = val.split_once("(");
                 match spl {
                     Some((pre, _)) => {
                         let name = pre.trim();
-                        e.varnish_step_keyword(name);
+                        e.ident(name);
                         last_consumed += name.len();
                     }
-                    None => e.varnish_step_keyword(val),
+                    None => e.ident(val),
                 }
             }
             "COMMENT" => e.comment(get(&node, source)),
