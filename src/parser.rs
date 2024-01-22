@@ -40,10 +40,18 @@ peg::parser! {
 
         rule expression() -> Expression<'a>
             = literal()
+            / ident_call_expr()
             / [Token::Ident(i)] {Expression::Ident(i)}
             / [Token::LParen] e:expression() [Token::RParen] {e}
             // TODO: binary_expression
             / [Token::Negate] e:expression() {Expression::Neg(Box::new(e))}
+
+        rule function_call_arg() -> FunctionCallArg<'a>
+            = e:expression() {FunctionCallArg::Positional(e)}
+            / [Token::Ident(i)] [Token::Assign] e:expression() {FunctionCallArg::Named { name: i, value: e }}
+
+        rule ident_call_expr() -> Expression<'a>
+            = [Token::Ident(i)] [Token::LParen] a:function_call_arg()**[Token::Comma] [Token::RParen] {Expression::IdentCall { name: i, args: a }}
 
         rule string_list() -> Vec<&'a str>
             = s:([Token::String(s)] {s})*<2,> {s}

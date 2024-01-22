@@ -80,7 +80,17 @@ pub enum Expression<'a> {
     Literal(&'a str),
     Neg(Box<Expression<'a>>),
     // BinaryOp,
-    // UnaryOp,
-    // Call,
-    // IdentCall,
+    IdentCall {
+        name: &'a str,
+        args: Vec<FunctionCallArg<'a>>,
+    },
+}
+
+#[derive(Debug)]
+pub enum FunctionCallArg<'a> {
+    Named {
+        name: &'a str,
+        value: Expression<'a>,
+    },
+    Positional(Expression<'a>),
 }
