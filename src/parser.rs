@@ -79,6 +79,36 @@ peg::parser! {
                 TopLevelDeclaration::Probe { name: i, properties: p }
             }
 
+        rule unset_statement() -> Statement<'a>
+            = [Token::Unset] [Token::Ident(i)] [Token::Semicolon] {Statement::Unset { ident: i }}
+
+        rule set_statement() -> Statement<'a>
+            = [Token::Set] [Token::Ident(i)] op:assign_op() e:expression() [Token::Semicolon] {
+                Statement::Set {
+                    ident: i,
+                    op,
+                    expr: e,
+                }
+            }
+
+        rule statement() -> Statement<'a>
+            = unset_statement()
+            / set_statement()
+            // TODO: if
+            // TODO: new
+            // TODO: call
+            // TODO: ident call
+            // TODO: include
+            // TODO: return
+
+        rule sub() -> TopLevelDeclaration<'a>
+            = [Token::Sub] [Token::Ident(i)] [Token::LBrace] s:statement()* [Token::RBrace] {
+                TopLevelDeclaration::Sub {
+                    name: i,
+                    statements: s,
+                }
+            }
+
         rule top_level_declaration() -> TopLevelDeclaration<'a>
             = vcl_version()
             / include()
@@ -86,6 +116,7 @@ peg::parser! {
             / acl()
             / backend()
             / probe()
+            / sub()
 
         pub rule source_file() -> SourceFile<'a>
             = top_level_declaration()*
