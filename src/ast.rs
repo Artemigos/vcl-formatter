@@ -46,6 +46,12 @@ pub enum BackendValue<'a> {
 }
 
 #[derive(Debug)]
+pub struct ElseIfStatement<'a> {
+    pub condition: Expression<'a>,
+    pub body: Vec<Statement<'a>>,
+}
+
+#[derive(Debug)]
 pub enum Statement<'a> {
     Set {
         ident: &'a str,
@@ -59,9 +65,14 @@ pub enum Statement<'a> {
         ident: &'a str,
     },
     IdentCall, // TODO:
-    If,        // TODO:
     Return,    // TODO:
     New,       // TODO:
+    If {
+        condition: Expression<'a>,
+        body: Vec<Statement<'a>>,
+        elseifs: Vec<ElseIfStatement<'a>>,
+        else_st: Option<Vec<Statement<'a>>>,
+    },
 }
 
 #[derive(Debug)]

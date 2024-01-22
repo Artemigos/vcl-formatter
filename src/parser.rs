@@ -91,18 +91,42 @@ peg::parser! {
                 }
             }
 
+        rule body() -> Vec<Statement<'a>>
+            = [Token::LBrace] s:statement()* [Token::RBrace] {s}
+
+        rule if_statement() -> Statement<'a>
+            = [Token::If] [Token::LParen] c:expression() [Token::RParen] s:body() b1:elseif_statement()* b2:else_statement()? {
+                Statement::If {
+                    condition: c,
+                    body: s,
+                    elseifs: b1,
+                    else_st: b2,
+                }
+            }
+
+        rule elseif_statement() -> ElseIfStatement<'a>
+            = ([Token::Else] [Token::If] / [Token::ElseIf]) [Token::LParen] c:expression() [Token::RParen] s:body() {
+                ElseIfStatement {
+                    condition: c,
+                    body: s,
+                }
+            }
+
+        rule else_statement() -> Vec<Statement<'a>>
+            = [Token::Else] s:body() {s}
+
         rule statement() -> Statement<'a>
             = unset_statement()
             / set_statement()
-            // TODO: if
             // TODO: new
+            / if_statement()
             // TODO: call
             // TODO: ident call
             // TODO: include
             // TODO: return
 
         rule sub() -> TopLevelDeclaration<'a>
-            = [Token::Sub] [Token::Ident(i)] [Token::LBrace] s:statement()* [Token::RBrace] {
+            = [Token::Sub] [Token::Ident(i)] s:body() {
                 TopLevelDeclaration::Sub {
                     name: i,
                     statements: s,

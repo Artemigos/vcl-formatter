@@ -45,6 +45,9 @@ pub enum Token<'a> {
     #[token("else")]
     Else,
 
+    #[token("elseif")]
+    ElseIf,
+
     #[token("return")]
     Return,
 
