@@ -65,13 +65,16 @@ pub enum Statement<'a> {
         ident: &'a str,
     },
     IdentCall, // TODO:
-    Return,    // TODO:
-    New,       // TODO:
     If {
         condition: Expression<'a>,
         body: Vec<Statement<'a>>,
         elseifs: Vec<ElseIfStatement<'a>>,
         else_st: Option<Vec<Statement<'a>>>,
+    },
+    Return, // TODO:
+    New {
+        name: &'a str,
+        value: Expression<'a>,
     },
 }
 

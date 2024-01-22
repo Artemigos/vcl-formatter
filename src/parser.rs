@@ -115,11 +115,19 @@ peg::parser! {
         rule else_statement() -> Vec<Statement<'a>>
             = [Token::Else] s:body() {s}
 
+        rule new_statement() -> Statement<'a>
+            = [Token::New] [Token::Ident(i)] [Token::Assign] e:ident_call_expr() [Token::Semicolon] {
+                Statement::New {
+                    name: i,
+                    value: e,
+                }
+            }
+
         rule statement() -> Statement<'a>
             = unset_statement()
             / set_statement()
-            // TODO: new
             / if_statement()
+            / new_statement()
             // TODO: call
             // TODO: ident call
             // TODO: include
