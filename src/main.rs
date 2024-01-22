@@ -100,7 +100,7 @@ fn main() {
                         lexer::Token::RBrace => e.body_end(),
                         lexer::Token::LParen => e.l_paren(),
                         lexer::Token::RParen => e.r_paren(),
-                        lexer::Token::Dot => e.prefix_operator("."),
+                        lexer::Token::BackendPropIdent(s) => e.ident(s),
                         lexer::Token::Negate => e.prefix_operator("!"),
                         lexer::Token::Assign => e.infix_operator("="),
                         lexer::Token::Plus => e.infix_operator("+"),

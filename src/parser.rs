@@ -50,10 +50,8 @@ peg::parser! {
             / s:string_list() { BackendValue::StringList(s) }
             / [Token::LBrace] p:backend_property()* [Token::RBrace] { BackendValue::Composite(p) }
 
-        // TODO: fun problem - `.probe` is lexed as [Token::Dot] [Token::Probe]
-        // instead of [Token::Dot] [Token::Ident]
         rule backend_property() -> BackendProperty<'a>
-            = [Token::Dot] [Token::Ident(i)] [Token::Assign] v:backend_value()* [Token::Semicolon] {
+            = [Token::BackendPropIdent(i)] [Token::Assign] v:backend_value()* [Token::Semicolon] {
                 BackendProperty { name: i, values: v }
             }
 

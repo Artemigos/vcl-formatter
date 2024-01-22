@@ -72,6 +72,9 @@ pub enum Token<'a> {
     #[regex(r"[a-zA-Z_][\w\-]*(\.[a-zA-Z_][\w\-]*)*")]
     Ident(&'a str),
 
+    #[regex(r"\.[a-zA-Z_][\w\-]*")]
+    BackendPropIdent(&'a str),
+
     #[token(";")]
     Semicolon,
 
@@ -86,9 +89,6 @@ pub enum Token<'a> {
 
     #[token(")")]
     RParen,
-
-    #[token(".")]
-    Dot,
 
     #[token("!")]
     Negate,
