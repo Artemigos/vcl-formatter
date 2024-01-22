@@ -40,7 +40,7 @@ peg::parser! {
 
         rule expression() -> Expression<'a>
             = literal()
-            / ident_call_expr()
+            / e:ident_call_expr() {Expression::IdentCall(e)}
             / [Token::Ident(i)] {Expression::Ident(i)}
             / [Token::LParen] e:expression() [Token::RParen] {e}
             // TODO: binary_expression
@@ -50,8 +50,8 @@ peg::parser! {
             = e:expression() {FunctionCallArg::Positional(e)}
             / [Token::Ident(i)] [Token::Assign] e:expression() {FunctionCallArg::Named { name: i, value: e }}
 
-        rule ident_call_expr() -> Expression<'a>
-            = [Token::Ident(i)] [Token::LParen] a:function_call_arg()**[Token::Comma] [Token::RParen] {Expression::IdentCall { name: i, args: a }}
+        rule ident_call_expr() -> IdentCallExpression<'a>
+            = [Token::Ident(i)] [Token::LParen] a:function_call_arg()**[Token::Comma] [Token::RParen] {IdentCallExpression { name: i, args: a }}
 
         rule string_list() -> Vec<&'a str>
             = s:([Token::String(s)] {s})*<2,> {s}
@@ -132,7 +132,7 @@ peg::parser! {
             / if_statement()
             / new_statement()
             / call_statement()
-            // TODO: ident call
+            / e:ident_call_expr() {Statement::IdentCall(e)}
             // TODO: include
             // TODO: return
 

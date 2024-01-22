@@ -52,6 +52,12 @@ pub struct ElseIfStatement<'a> {
 }
 
 #[derive(Debug)]
+pub struct IdentCallExpression<'a> {
+    pub name: &'a str,
+    pub args: Vec<FunctionCallArg<'a>>,
+}
+
+#[derive(Debug)]
 pub enum Statement<'a> {
     Set {
         ident: &'a str,
@@ -64,7 +70,7 @@ pub enum Statement<'a> {
     Call {
         ident: &'a str,
     },
-    IdentCall, // TODO:
+    IdentCall(IdentCallExpression<'a>),
     If {
         condition: Expression<'a>,
         body: Vec<Statement<'a>>,
@@ -74,7 +80,7 @@ pub enum Statement<'a> {
     Return, // TODO:
     New {
         name: &'a str,
-        value: Expression<'a>,
+        value: IdentCallExpression<'a>,
     },
 }
 
@@ -94,10 +100,7 @@ pub enum Expression<'a> {
     Literal(&'a str),
     Neg(Box<Expression<'a>>),
     // BinaryOp,
-    IdentCall {
-        name: &'a str,
-        args: Vec<FunctionCallArg<'a>>,
-    },
+    IdentCall(IdentCallExpression<'a>),
 }
 
 #[derive(Debug)]
