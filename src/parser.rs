@@ -123,12 +123,15 @@ peg::parser! {
                 }
             }
 
+        rule call_statement() -> Statement<'a>
+            = [Token::Call] [Token::Ident(i)] [Token::Semicolon] {Statement::Call { ident: i }}
+
         rule statement() -> Statement<'a>
             = unset_statement()
             / set_statement()
             / if_statement()
             / new_statement()
-            // TODO: call
+            / call_statement()
             // TODO: ident call
             // TODO: include
             // TODO: return
