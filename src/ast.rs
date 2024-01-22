@@ -78,6 +78,7 @@ pub enum AssignOperator {
 pub enum Expression<'a> {
     Ident(&'a str),
     Literal(&'a str),
+    Neg(Box<Expression<'a>>),
     // BinaryOp,
     // UnaryOp,
     // Call,

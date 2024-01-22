@@ -39,8 +39,11 @@ peg::parser! {
             }
 
         rule expression() -> Expression<'a>
-            = [Token::Ident(i)] {Expression::Ident(i)} // TODO: the rest
-            / literal()
+            = literal()
+            / [Token::Ident(i)] {Expression::Ident(i)}
+            / [Token::LParen] e:expression() [Token::RParen] {e}
+            // TODO: binary_expression
+            / [Token::Negate] e:expression() {Expression::Neg(Box::new(e))}
 
         rule string_list() -> Vec<&'a str>
             = s:([Token::String(s)] {s})*<2,> {s}
