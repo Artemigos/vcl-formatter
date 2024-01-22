@@ -20,8 +20,8 @@ peg::parser! {
         rule vcl_version() -> TopLevelDeclaration<'a>
             = [Token::Vcl] [Token::Number(n)] [Token::Semicolon] {TopLevelDeclaration::VclVersion(n)}
 
-        rule include() -> TopLevelDeclaration<'a>
-            = [Token::Include] [Token::String(s)] [Token::Semicolon] {TopLevelDeclaration::Include(s)}
+        rule include() -> &'a str
+            = [Token::Include] [Token::String(s)] [Token::Semicolon] {s}
 
         rule import() -> TopLevelDeclaration<'a>
             = [Token::Import] [Token::Ident(i)] from:([Token::From] [Token::String(s)] {s})? [Token::Semicolon] {
@@ -132,8 +132,8 @@ peg::parser! {
             / if_statement()
             / new_statement()
             / call_statement()
-            / e:ident_call_expr() {Statement::IdentCall(e)}
-            // TODO: include
+            / e:ident_call_expr() [Token::Semicolon] {Statement::IdentCall(e)}
+            / i:include() {Statement::Include(i)}
             // TODO: return
 
         rule sub() -> TopLevelDeclaration<'a>
@@ -146,7 +146,7 @@ peg::parser! {
 
         rule top_level_declaration() -> TopLevelDeclaration<'a>
             = vcl_version()
-            / include()
+            / i:include() {TopLevelDeclaration::Include(i)}
             / import()
             / acl()
             / backend()
