@@ -5,6 +5,7 @@ mod emitter;
 mod lexer;
 mod parser;
 mod visitor;
+mod ast_emitter;
 
 use std::io::Read;
 
@@ -166,9 +167,9 @@ fn main() {
             })
             .collect();
         if args.print {
-            println!("{:?}", tokens[69]);
+            let mut stdout = std::io::stdout().lock();
             let ast = parser::vcl::source_file(&tokens).unwrap();
-            println!("{:?}", ast);
+            ast_emitter::emit_file(ast, &mut stdout);
         }
     } else {
         panic!("unknown test number: {}", args.test);
