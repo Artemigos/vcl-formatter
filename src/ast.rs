@@ -61,7 +61,7 @@ pub struct IdentCallExpression<'a> {
 pub enum Statement<'a> {
     Set {
         ident: &'a str,
-        op: AssignOperator,
+        op: &'a str,
         expr: Expression<'a>,
     },
     Unset {
@@ -86,15 +86,6 @@ pub enum Statement<'a> {
         value: IdentCallExpression<'a>,
     },
     Include(&'a str),
-}
-
-#[derive(Debug)]
-pub enum AssignOperator {
-    Assign,
-    AddAssign,
-    SubAssign,
-    MulAssign,
-    DivAssign,
 }
 
 #[derive(Debug)]

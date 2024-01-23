@@ -3,12 +3,12 @@ use crate::lexer::Token;
 
 peg::parser! {
     pub grammar vcl<'a>() for [Token<'a>] {
-        rule assign_op() -> AssignOperator
-            = [Token::Assign] { AssignOperator::Assign }
-            / [Token::AddAssign] { AssignOperator::AddAssign }
-            / [Token::SubtractAssign] { AssignOperator::SubAssign }
-            / [Token::MultiplyAssign] { AssignOperator::MulAssign }
-            / [Token::DivideAssign] { AssignOperator::DivAssign }
+        rule assign_op() -> &'a str
+            = [Token::Assign] {"="}
+            / [Token::AddAssign] {"+="}
+            / [Token::SubtractAssign] {"-="}
+            / [Token::MultiplyAssign] {"*="}
+            / [Token::DivideAssign] {"/="}
 
         rule literal() -> Expression<'a>
             = [Token::String(s)] {Expression::Literal(s)}

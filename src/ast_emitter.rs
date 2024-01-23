@@ -54,7 +54,7 @@ impl<'a> Emitter<'a> {
                 self.emit_backend(name, properties.as_ref())?
             }
             TopLevelDeclaration::Probe { name, properties } => self.emit_probe(name, properties)?,
-            TopLevelDeclaration::Sub { name, statements } => todo!(),
+            TopLevelDeclaration::Sub { name, statements } => self.emit_sub(name, statements)?,
         };
 
         Ok(())
@@ -197,6 +197,95 @@ impl<'a> Emitter<'a> {
                 writeln!(self.w, "}}")?;
             }
             None => writeln!(self.w, "backend {name} none;")?,
+        };
+        Ok(())
+    }
+
+    fn emit_sub(&mut self, name: &str, statements: &Vec<Statement>) -> R {
+        writeln!(self.w, "sub {name} {{")?;
+        self.ci += 1;
+        for st in statements {
+            self.emit_statement(st)?;
+        }
+        self.ci -= 1;
+        writeln!(self.w, "}}")?;
+        Ok(())
+    }
+
+    fn emit_statement(&mut self, st: &Statement) -> R {
+        self.emit_indent();
+        match st {
+            Statement::Set { ident, op, expr } => {
+                write!(self.w, "set {ident} {op} ")?;
+                self.emit_expression(expr)?;
+                writeln!(self.w, ";")?;
+            }
+            Statement::Unset { ident } => writeln!(self.w, "unset {ident};")?,
+            Statement::Call { ident } => writeln!(self.w, "call {ident};")?,
+            Statement::IdentCall(i) => {
+                self.emit_ident_call(i)?;
+                writeln!(self.w, ";")?;
+            }
+            Statement::If {
+                condition,
+                body,
+                elseifs,
+                else_st,
+            } => {
+                write!(self.w, "if (")?;
+                self.emit_expression(condition)?;
+                writeln!(self.w, ") {{")?;
+                self.ci += 1;
+                for st in body {
+                    self.emit_statement(st)?;
+                }
+                self.ci -= 1;
+                for ei in elseifs {
+                    self.emit_indent();
+                    writeln!(self.w, "}} else if (")?;
+                    self.emit_expression(&ei.condition)?;
+                    writeln!(self.w, ") {{")?;
+                    self.ci += 1;
+                    for st in &ei.body {
+                        self.emit_statement(st);
+                    }
+                    self.ci -= 1;
+                }
+                if let Some(e) = else_st {
+                    self.emit_indent();
+                    writeln!(self.w, "}} else {{")?;
+                    self.ci += 1;
+                    for st in e {
+                        self.emit_statement(st);
+                    }
+                    self.ci -= 1;
+                }
+                self.emit_indent();
+                writeln!(self.w, "}}")?;
+            }
+            Statement::Return { name, args } => {
+                write!(self.w, "return ({name}")?;
+                if let Some(args) = args {
+                    write!(self.w, "(")?;
+                    let mut first = true;
+                    for arg in args {
+                        if first {
+                            first = false;
+                        } else {
+                            write!(self.w, ", ")?;
+                        };
+                        self.emit_expression(arg)?;
+                    }
+                    write!(self.w, ")")?;
+                }
+                writeln!(self.w, ");")?;
+            }
+            Statement::New { name, value } => {
+                write!(self.w, "new {name} = ")?;
+                self.emit_ident_call(value)?;
+                writeln!(self.w, ";")?;
+            }
+            Statement::Include(i) => self.emit_include(i)?,
         };
         Ok(())
     }
