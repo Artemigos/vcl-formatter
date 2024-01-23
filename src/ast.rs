@@ -35,7 +35,7 @@ pub struct AclEntry<'a> {
 #[derive(Debug)]
 pub struct BackendProperty<'a> {
     pub name: &'a str,
-    pub values: Vec<BackendValue<'a>>,
+    pub value: BackendValue<'a>,
 }
 
 #[derive(Debug)]

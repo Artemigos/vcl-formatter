@@ -105,7 +105,7 @@ impl<'a> StandardEmitter<'a> {
     fn decrease_nest(&mut self) {
         assert!(self.nest_level > 0);
         if self.last_nest() == self.nest_level {
-            self.materialized_nest_levels.pop();
+            let _ = self.materialized_nest_levels.pop();
         }
         self.nest_level -= 1;
     }

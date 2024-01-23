@@ -1,4 +1,5 @@
 #![allow(unused)]
+#![warn(unused_results)]
 
 mod ast;
 mod emitter;

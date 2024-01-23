@@ -77,13 +77,13 @@ peg::parser! {
             = s:([Token::String(s)] {s})*<2,> {s}
 
         rule backend_value() -> BackendValue<'a>
-            = e:expression() { BackendValue::Expression(e) }
-            / s:string_list() { BackendValue::StringList(s) }
+            = s:string_list() { BackendValue::StringList(s) }
+            / e:expression() { BackendValue::Expression(e) }
             / [Token::LBrace] p:backend_property()* [Token::RBrace] { BackendValue::Composite(p) }
 
         rule backend_property() -> BackendProperty<'a>
-            = [Token::BackendPropIdent(i)] [Token::Assign] v:backend_value()* [Token::Semicolon] {
-                BackendProperty { name: i, values: v }
+            = [Token::BackendPropIdent(i)] [Token::Assign] v:backend_value() [Token::Semicolon] {
+                BackendProperty { name: i, value: v }
             }
 
         rule backend() -> TopLevelDeclaration<'a>
