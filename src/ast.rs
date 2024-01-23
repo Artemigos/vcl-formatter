@@ -97,13 +97,16 @@ pub enum AssignOperator {
     DivAssign,
 }
 
-// TODO:
 #[derive(Debug)]
 pub enum Expression<'a> {
     Ident(&'a str),
     Literal(&'a str),
     Neg(Box<Expression<'a>>),
-    // BinaryOp,
+    Binary {
+        left: Box<Expression<'a>>,
+        op: &'a str,
+        right: Box<Expression<'a>>,
+    },
     IdentCall(IdentCallExpression<'a>),
 }
 

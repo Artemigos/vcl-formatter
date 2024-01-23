@@ -38,13 +38,33 @@ peg::parser! {
                 TopLevelDeclaration::Acl { name: i, entries: e }
             }
 
-        rule expression() -> Expression<'a>
-            = literal()
-            / e:ident_call_expr() {Expression::IdentCall(e)}
-            / [Token::Ident(i)] {Expression::Ident(i)}
-            / [Token::LParen] e:expression() [Token::RParen] {e}
-            // TODO: binary_expression
-            / [Token::Negate] e:expression() {Expression::Neg(Box::new(e))}
+        rule expression() -> Expression<'a> = precedence!{
+            x:(@) [Token::Plus] y:@ {Expression::Binary { left: Box::new(x), op: "+", right: Box::new(y) }}
+            x:(@) [Token::Minus] y:@ {Expression::Binary { left: Box::new(x), op: "-", right: Box::new(y) }}
+            --
+            x:(@) [Token::Multiply] y:@ {Expression::Binary { left: Box::new(x), op: "*", right: Box::new(y) }}
+            x:(@) [Token::Divide] y:@ {Expression::Binary { left: Box::new(x), op: "/", right: Box::new(y) }}
+            --
+            x:(@) [Token::And] y:@ {Expression::Binary { left: Box::new(x), op: "&&", right: Box::new(y) }}
+            --
+            x:(@) [Token::Or] y:@ {Expression::Binary { left: Box::new(x), op: "||", right: Box::new(y) }}
+            --
+            x:(@) [Token::Equals] y:@ {Expression::Binary { left: Box::new(x), op: "==", right: Box::new(y) }}
+            x:(@) [Token::NotEquals] y:@ {Expression::Binary { left: Box::new(x), op: "!=", right: Box::new(y) }}
+            x:(@) [Token::Matches] y:@ {Expression::Binary { left: Box::new(x), op: "~", right: Box::new(y) }}
+            x:(@) [Token::NotMatches] y:@ {Expression::Binary { left: Box::new(x), op: "!~", right: Box::new(y) }}
+            x:(@) [Token::Greater] y:@ {Expression::Binary { left: Box::new(x), op: ">", right: Box::new(y) }}
+            x:(@) [Token::Lesser] y:@ {Expression::Binary { left: Box::new(x), op: "<", right: Box::new(y) }}
+            x:(@) [Token::GreaterEquals] y:@ {Expression::Binary { left: Box::new(x), op: ">=", right: Box::new(y) }}
+            x:(@) [Token::LesserEquals] y:@ {Expression::Binary { left: Box::new(x), op: "<=", right: Box::new(y) }}
+            --
+            [Token::Negate] x:@ {Expression::Neg(Box::new(x))}
+            --
+            l:literal() {l}
+            e:ident_call_expr() {Expression::IdentCall(e)}
+            [Token::Ident(i)] {Expression::Ident(i)}
+            [Token::LParen] e:expression() [Token::RParen] {e}
+        }
 
         rule function_call_arg() -> FunctionCallArg<'a>
             = e:expression() {FunctionCallArg::Positional(e)}
