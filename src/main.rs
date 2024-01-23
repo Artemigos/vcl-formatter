@@ -170,7 +170,8 @@ fn main() {
         if args.print {
             let mut stdout = std::io::stdout().lock();
             let ast = parser::vcl::source_file(&tokens).unwrap();
-            ast_emitter::emit_file(ast, &mut stdout);
+            let mut e = ast_emitter::Emitter::new(&mut stdout, 4);
+            e.emit(&ast);
         }
     } else {
         panic!("unknown test number: {}", args.test);
