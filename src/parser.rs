@@ -126,6 +126,14 @@ peg::parser! {
         rule call_statement() -> Statement<'a>
             = [Token::Call] [Token::Ident(i)] [Token::Semicolon] {Statement::Call { ident: i }}
 
+        rule return_statement() -> Statement<'a>
+            = [Token::Return] [Token::LParen] [Token::Ident(i)] a:([Token::LParen] a:expression()**[Token::Comma] [Token::RParen] {a})? [Token::RParen] [Token::Semicolon] {
+                Statement::Return {
+                    name: i,
+                    args: a,
+                }
+            }
+
         rule statement() -> Statement<'a>
             = unset_statement()
             / set_statement()
@@ -134,7 +142,7 @@ peg::parser! {
             / call_statement()
             / e:ident_call_expr() [Token::Semicolon] {Statement::IdentCall(e)}
             / i:include() {Statement::Include(i)}
-            // TODO: return
+            / return_statement()
 
         rule sub() -> TopLevelDeclaration<'a>
             = [Token::Sub] [Token::Ident(i)] s:body() {

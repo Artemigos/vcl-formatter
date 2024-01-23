@@ -77,7 +77,10 @@ pub enum Statement<'a> {
         elseifs: Vec<ElseIfStatement<'a>>,
         else_st: Option<Vec<Statement<'a>>>,
     },
-    Return, // TODO:
+    Return {
+        name: &'a str,
+        args: Option<Vec<Expression<'a>>>,
+    },
     New {
         name: &'a str,
         value: IdentCallExpression<'a>,
