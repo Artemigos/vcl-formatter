@@ -67,8 +67,8 @@ peg::parser! {
         }
 
         rule function_call_arg() -> FunctionCallArg<'a>
-            = e:expression() {FunctionCallArg::Positional(e)}
-            / [Token::Ident(i)] [Token::Assign] e:expression() {FunctionCallArg::Named { name: i, value: e }}
+            = [Token::Ident(i)] [Token::Assign] e:expression() {FunctionCallArg::Named { name: i, value: e }}
+            / e:expression() {FunctionCallArg::Positional(e)}
 
         rule ident_call_expr() -> IdentCallExpression<'a>
             = [Token::Ident(i)] [Token::LParen] a:function_call_arg()**[Token::Comma] [Token::RParen] {IdentCallExpression { name: i, args: a }}

@@ -175,7 +175,7 @@ impl<'a> Emitter<'a> {
             };
             match arg {
                 FunctionCallArg::Named { name, value } => {
-                    write!(self.w, "{name}=")?;
+                    write!(self.w, "{name} = ")?;
                     self.emit_expression(value)?;
                 }
                 FunctionCallArg::Positional(p) => self.emit_expression(p)?,
