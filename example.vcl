@@ -1,4 +1,5 @@
-vcl 4.1;
+# hello to the VCL file
+vcl 4.1; # welp
 
 include "vha6/whatever";
 import std;

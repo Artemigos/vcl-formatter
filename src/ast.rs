@@ -1,13 +1,25 @@
+use crate::lexer::Token;
+
+type WS<'a> = Vec<Token<'a>>;
+
 pub type SourceFile<'a> = Vec<TopLevelDeclaration<'a>>;
 
 #[derive(Debug)]
 pub enum TopLevelDeclaration<'a> {
-    VclVersion(&'a str),
-    Import {
-        name: &'a str,
-        from: Option<&'a str>,
+    VclVersion {
+        ws_pre_vcl: WS<'a>,
+        ws_pre_number: WS<'a>,
+        ws_pre_semi: WS<'a>,
+        number: &'a str,
     },
-    Include(&'a str),
+    Import {
+        ws_pre_import: WS<'a>,
+        ws_pre_name: WS<'a>,
+        ws_pre_semi: WS<'a>,
+        name: &'a str,
+        from: Option<FromData<'a>>,
+    },
+    Include(IncludeData<'a>),
     Acl {
         name: &'a str,
         entries: Vec<AclEntry<'a>>,
@@ -24,6 +36,21 @@ pub enum TopLevelDeclaration<'a> {
         name: &'a str,
         statements: Vec<Statement<'a>>,
     },
+}
+
+#[derive(Debug)]
+pub struct IncludeData<'a> {
+    pub ws_pre_include: WS<'a>,
+    pub ws_pre_name: WS<'a>,
+    pub ws_pre_semi: WS<'a>,
+    pub name: &'a str,
+}
+
+#[derive(Debug)]
+pub struct FromData<'a> {
+    pub ws_pre_from: WS<'a>,
+    pub ws_pre_value: WS<'a>,
+    pub value: &'a str,
 }
 
 #[derive(Debug)]
@@ -85,7 +112,7 @@ pub enum Statement<'a> {
         name: &'a str,
         value: IdentCallExpression<'a>,
     },
-    Include(&'a str),
+    Include(IncludeData<'a>),
 }
 
 #[derive(Debug)]

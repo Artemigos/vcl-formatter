@@ -21,14 +21,31 @@ peg::parser! {
             / [Token::Bool(s)] {Expression::Literal(s)}
 
         rule vcl_version() -> TopLevelDeclaration<'a>
-            = _ [Token::Vcl] _ [Token::Number(n)] _ [Token::Semicolon] {TopLevelDeclaration::VclVersion(n)}
+            = i1:_ [Token::Vcl] i2:_ [Token::Number(n)] i3:_ [Token::Semicolon] {
+                TopLevelDeclaration::VclVersion {
+                    ws_pre_vcl: i1,
+                    ws_pre_number: i2,
+                    ws_pre_semi: i3,
+                    number: n,
+                }
+            }
 
-        rule include() -> &'a str
-            = _ [Token::Include] _ [Token::String(s)] _ [Token::Semicolon] {s}
+        rule include() -> IncludeData<'a>
+            = i1:_ [Token::Include] i2:_ [Token::String(s)] i3:_ [Token::Semicolon] {
+                IncludeData {
+                    ws_pre_include: i1,
+                    ws_pre_name: i2,
+                    ws_pre_semi: i3,
+                    name: s,
+                }
+            }
+
+        rule import_from() -> FromData<'a>
+            = i1:_ [Token::From] i2:_ [Token::String(s)] {FromData { ws_pre_from: i1, ws_pre_value: i2, value: s }}
 
         rule import() -> TopLevelDeclaration<'a>
-            = _ [Token::Import] _ [Token::Ident(i)] from:(_ [Token::From] _ [Token::String(s)] {s})? _ [Token::Semicolon] {
-                TopLevelDeclaration::Import { name: i, from }
+            = i1:_ [Token::Import] i2:_ [Token::Ident(i)] from:import_from()? i3:_ [Token::Semicolon] {
+                TopLevelDeclaration::Import { ws_pre_import: i1, ws_pre_name: i2, ws_pre_semi: i3, name: i, from }
             }
 
         rule acl_entry() -> AclEntry<'a>

@@ -46,8 +46,10 @@ impl<'a> Emitter<'a> {
 
     fn emit_toplevel_declaration(&mut self, td: &TopLevelDeclaration) -> R {
         match td {
-            TopLevelDeclaration::VclVersion(v) => self.emit_vcl_version(v)?,
-            TopLevelDeclaration::Import { name, from } => self.emit_import(name, *from)?,
+            TopLevelDeclaration::VclVersion { number: v, .. } => self.emit_vcl_version(v)?,
+            TopLevelDeclaration::Import { name, from, .. } => {
+                self.emit_import(name, from.as_ref())?
+            }
             TopLevelDeclaration::Include(i) => self.emit_include(i)?,
             TopLevelDeclaration::Acl { name, entries } => self.emit_acl(name, entries)?,
             TopLevelDeclaration::Backend { name, properties } => {
@@ -65,16 +67,16 @@ impl<'a> Emitter<'a> {
         Ok(())
     }
 
-    fn emit_import(&mut self, name: &str, from: Option<&str>) -> R {
+    fn emit_import(&mut self, name: &str, from: Option<&FromData>) -> R {
         match from {
-            Some(f) => writeln!(self.w, "import {name} from {f};")?,
+            Some(FromData { value: f, .. }) => writeln!(self.w, "import {name} from {f};")?,
             None => writeln!(self.w, "import {name};")?,
         };
         Ok(())
     }
 
-    fn emit_include(&mut self, inc: &str) -> R {
-        writeln!(self.w, "include {inc};")?;
+    fn emit_include(&mut self, inc: &IncludeData) -> R {
+        writeln!(self.w, "include {};", inc.name)?;
         Ok(())
     }
 
