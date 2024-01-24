@@ -170,7 +170,7 @@ fn main() {
         if args.print {
             let mut stdout = std::io::stdout().lock();
             let ast = parser::vcl::source_file(&tokens).unwrap();
-            let mut e = ast_emitter::Emitter::new(&mut stdout, 4);
+            let mut e = ast_emitter::Emitter::new(&mut stdout, args.indent);
             e.emit(&ast);
         }
     } else {
