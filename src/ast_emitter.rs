@@ -242,7 +242,7 @@ impl<'a> Emitter<'a> {
                 self.ci -= 1;
                 for ei in elseifs {
                     self.emit_indent();
-                    writeln!(self.w, "}} else if (")?;
+                    write!(self.w, "}} else if (")?;
                     self.emit_expression(&ei.condition)?;
                     writeln!(self.w, ") {{")?;
                     self.ci += 1;
