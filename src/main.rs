@@ -2,11 +2,11 @@
 #![warn(unused_results)]
 
 mod ast;
+mod ast_emitter;
 mod emitter;
 mod lexer;
 mod parser;
 mod visitor;
-mod ast_emitter;
 
 use std::io::Read;
 
@@ -160,18 +160,28 @@ fn main() {
             .filter(|t| {
                 !matches!(
                     t,
-                    lexer::Token::Newline(_) |
-                    lexer::Token::LineComment(_) |
-                    lexer::Token::MultilineComment(_) |
-                    lexer::Token::InlineCCode(_)
+                    lexer::Token::Newline(_)
+                        | lexer::Token::LineComment(_)
+                        | lexer::Token::MultilineComment(_)
+                        | lexer::Token::InlineCCode(_)
                 )
             })
             .collect();
         if args.print {
             let mut stdout = std::io::stdout().lock();
-            let ast = parser::vcl::source_file(&tokens).unwrap();
-            let mut e = ast_emitter::Emitter::new(&mut stdout, args.indent);
-            e.emit(&ast);
+            let ast = parser::vcl::source_file(&tokens);
+            match ast {
+                Ok(ast) => {
+                    let mut e = ast_emitter::Emitter::new(&mut stdout, args.indent);
+                    e.emit(&ast).unwrap();
+                }
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    eprintln!("before: {:?}", tokens[e.location - 1]);
+                    eprintln!("token:  {:?}", tokens[e.location]);
+                    eprintln!("after:  {:?}", tokens[e.location + 1]);
+                }
+            }
         }
     } else {
         panic!("unknown test number: {}", args.test);
