@@ -1,12 +1,11 @@
 use std::io::Write;
 
-use crate::ast::*;
+use crate::{ast::*, lexer::Token};
 
 #[derive(Debug)]
 pub enum E {
     IO(std::io::Error),
-    UnexpectedStringList,
-    ExpectedStringList,
+    ExpectedInlineToken,
 }
 
 impl From<std::io::Error> for E {
@@ -46,8 +45,27 @@ impl<'a> Emitter<'a> {
 
     fn emit_toplevel_declaration(&mut self, td: &TopLevelDeclaration) -> R {
         match td {
-            TopLevelDeclaration::VclVersion { number: v, .. } => self.emit_vcl_version(v)?,
-            TopLevelDeclaration::Import { name, from, .. } => {
+            TopLevelDeclaration::VclVersion {
+                number: v,
+                ws_pre_vcl,
+                ws_pre_number,
+                ws_pre_semi,
+            } => {
+                self.emit_all_ws(ws_pre_vcl)?;
+                self.emit_all_ws(ws_pre_number)?;
+                self.emit_all_ws(ws_pre_semi)?;
+                self.emit_vcl_version(v)?;
+            }
+            TopLevelDeclaration::Import {
+                name,
+                from,
+                ws_pre_import,
+                ws_pre_name,
+                ws_pre_semi,
+            } => {
+                self.emit_all_ws(ws_pre_import)?;
+                self.emit_all_ws(ws_pre_name)?;
+                self.emit_all_ws(ws_pre_semi)?;
                 self.emit_import(name, from.as_ref())?
             }
             TopLevelDeclaration::Include(i) => self.emit_include(i)?,
@@ -62,21 +80,54 @@ impl<'a> Emitter<'a> {
         Ok(())
     }
 
+    fn emit_all_ws(&mut self, ws: &Vec<Token>) -> R {
+        let mut at_newlines = 0;
+        for tok in ws {
+            match tok {
+                Token::LineComment(c) => {
+                    at_newlines = 0;
+                    write!(self.w, "{c}")?;
+                }
+                Token::MultilineComment(c) => {
+                    at_newlines = 0;
+                    write!(self.w, "{c}")?;
+                }
+                Token::InlineCCode(c) => {
+                    at_newlines = 0;
+                    write!(self.w, "{c}")?;
+                }
+                Token::Newline(_) => {
+                    at_newlines += 1;
+                    if at_newlines <= 2 {
+                        writeln!(self.w)?;
+                    }
+                }
+                _ => {
+                    return Err(E::ExpectedInlineToken);
+                }
+            };
+        }
+        Ok(())
+    }
+
     fn emit_vcl_version(&mut self, v: &str) -> R {
-        writeln!(self.w, "vcl {v};")?;
+        write!(self.w, "vcl {v};")?;
         Ok(())
     }
 
     fn emit_import(&mut self, name: &str, from: Option<&FromData>) -> R {
         match from {
-            Some(FromData { value: f, .. }) => writeln!(self.w, "import {name} from {f};")?,
-            None => writeln!(self.w, "import {name};")?,
+            Some(FromData { value: f, .. }) => write!(self.w, "import {name} from {f};")?,
+            None => write!(self.w, "import {name};")?,
         };
         Ok(())
     }
 
     fn emit_include(&mut self, inc: &IncludeData) -> R {
-        writeln!(self.w, "include {};", inc.name)?;
+        self.emit_all_ws(&inc.ws_pre_include)?;
+        self.emit_all_ws(&inc.ws_pre_name)?;
+        self.emit_all_ws(&inc.ws_pre_semi)?;
+        write!(self.w, "include {};", inc.name)?;
         Ok(())
     }
 
