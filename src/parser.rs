@@ -3,6 +3,9 @@ use crate::lexer::Token;
 
 peg::parser! {
     pub grammar vcl<'a>() for [Token<'a>] {
+        rule _ -> Vec<Token<'a>>
+            = ([Token::Newline(_)] / [Token::LineComment(_)] / [Token::MultilineComment(_)] / [Token::InlineCCode(_)])*
+
         rule assign_op() -> &'a str
             = [Token::Assign] {"="}
             / [Token::AddAssign] {"+="}
@@ -18,23 +21,23 @@ peg::parser! {
             / [Token::Bool(s)] {Expression::Literal(s)}
 
         rule vcl_version() -> TopLevelDeclaration<'a>
-            = [Token::Vcl] [Token::Number(n)] [Token::Semicolon] {TopLevelDeclaration::VclVersion(n)}
+            = _ [Token::Vcl] _ [Token::Number(n)] _ [Token::Semicolon] {TopLevelDeclaration::VclVersion(n)}
 
         rule include() -> &'a str
-            = [Token::Include] [Token::String(s)] [Token::Semicolon] {s}
+            = _ [Token::Include] _ [Token::String(s)] _ [Token::Semicolon] {s}
 
         rule import() -> TopLevelDeclaration<'a>
-            = [Token::Import] [Token::Ident(i)] from:([Token::From] [Token::String(s)] {s})? [Token::Semicolon] {
+            = _ [Token::Import] _ [Token::Ident(i)] from:(_ [Token::From] _ [Token::String(s)] {s})? _ [Token::Semicolon] {
                 TopLevelDeclaration::Import { name: i, from }
             }
 
         rule acl_entry() -> AclEntry<'a>
-            = [Token::String(s)] mask:([Token::Divide] [Token::Number(n)] {n})? [Token::Semicolon] {
+            = _ [Token::String(s)] mask:(_ [Token::Divide] _ [Token::Number(n)] {n})? _ [Token::Semicolon] {
                 AclEntry { value: s, mask }
             }
 
         rule acl() -> TopLevelDeclaration<'a>
-            = [Token::Acl] [Token::Ident(i)] [Token::LBrace] e:acl_entry()* [Token::RBrace] {
+            = _ [Token::Acl] _ [Token::Ident(i)] _ [Token::LBrace] e:acl_entry()* _ [Token::RBrace] {
                 TopLevelDeclaration::Acl { name: i, entries: e }
             }
 
@@ -60,50 +63,50 @@ peg::parser! {
             --
             [Token::Negate] x:@ {Expression::Neg(Box::new(x))}
             --
-            l:literal() {l}
+            _ l:literal() {l}
             e:ident_call_expr() {Expression::IdentCall(e)}
             [Token::Ident(i)] {Expression::Ident(i)}
             [Token::LParen] e:expression() [Token::RParen] {e}
         }
 
         rule function_call_arg() -> FunctionCallArg<'a>
-            = [Token::Ident(i)] [Token::Assign] e:expression() {FunctionCallArg::Named { name: i, value: e }}
+            = _ [Token::Ident(i)] _ [Token::Assign] e:expression() {FunctionCallArg::Named { name: i, value: e }}
             / e:expression() {FunctionCallArg::Positional(e)}
 
         rule ident_call_expr() -> IdentCallExpression<'a>
-            = [Token::Ident(i)] [Token::LParen] a:function_call_arg()**[Token::Comma] [Token::RParen] {IdentCallExpression { name: i, args: a }}
+            = _ [Token::Ident(i)] _ [Token::LParen] a:function_call_arg()**(_ [Token::Comma]) _ [Token::RParen] {IdentCallExpression { name: i, args: a }}
 
         rule string_list() -> Vec<&'a str>
-            = s:([Token::String(s)] {s})*<2,> {s}
+            = s:(_ [Token::String(s)] {s})*<2,> {s}
 
         rule backend_value() -> BackendValue<'a>
             = s:string_list() { BackendValue::StringList(s) }
             / e:expression() { BackendValue::Expression(e) }
-            / [Token::LBrace] p:backend_property()* [Token::RBrace] { BackendValue::Composite(p) }
+            / _ [Token::LBrace] p:backend_property()* _ [Token::RBrace] { BackendValue::Composite(p) }
 
         rule backend_property() -> BackendProperty<'a>
-            = [Token::BackendPropIdent(i)] [Token::Assign] v:backend_value() [Token::Semicolon] {
+            = _ [Token::BackendPropIdent(i)] _ [Token::Assign] v:backend_value() _ [Token::Semicolon] {
                 BackendProperty { name: i, value: v }
             }
 
         rule backend() -> TopLevelDeclaration<'a>
-            = [Token::Backend] [Token::Ident(i)] [Token::LBrace] p:backend_property()* [Token::RBrace] {
+            = _ [Token::Backend] _ [Token::Ident(i)] _ [Token::LBrace] p:backend_property()* _ [Token::RBrace] {
                 TopLevelDeclaration::Backend { name: i, properties: Some(p) }
             }
-            / [Token::Backend] [Token::Ident(i)] [Token::None] [Token::Semicolon] {
+            / _ [Token::Backend] _ [Token::Ident(i)] _ [Token::None] _ [Token::Semicolon] {
                 TopLevelDeclaration::Backend { name: i, properties: None }
             }
 
         rule probe() -> TopLevelDeclaration<'a>
-            = [Token::Probe] [Token::Ident(i)] [Token::LBrace] p:backend_property()* [Token::RBrace] {
+            = _ [Token::Probe] _ [Token::Ident(i)] _ [Token::LBrace] p:backend_property()* _ [Token::RBrace] {
                 TopLevelDeclaration::Probe { name: i, properties: p }
             }
 
         rule unset_statement() -> Statement<'a>
-            = [Token::Unset] [Token::Ident(i)] [Token::Semicolon] {Statement::Unset { ident: i }}
+            = _ [Token::Unset] _ [Token::Ident(i)] _ [Token::Semicolon] {Statement::Unset { ident: i }}
 
         rule set_statement() -> Statement<'a>
-            = [Token::Set] [Token::Ident(i)] op:assign_op() e:expression() [Token::Semicolon] {
+            = _ [Token::Set] _ [Token::Ident(i)] _ op:assign_op() e:expression() _ [Token::Semicolon] {
                 Statement::Set {
                     ident: i,
                     op,
@@ -112,10 +115,10 @@ peg::parser! {
             }
 
         rule body() -> Vec<Statement<'a>>
-            = [Token::LBrace] s:statement()* [Token::RBrace] {s}
+            = _ [Token::LBrace] s:statement()* _ [Token::RBrace] {s}
 
         rule if_statement() -> Statement<'a>
-            = [Token::If] [Token::LParen] c:expression() [Token::RParen] s:body() b1:elseif_statement()* b2:else_statement()? {
+            = _ [Token::If] _ [Token::LParen] c:expression() _ [Token::RParen] s:body() b1:elseif_statement()* b2:else_statement()? {
                 Statement::If {
                     condition: c,
                     body: s,
@@ -125,7 +128,7 @@ peg::parser! {
             }
 
         rule elseif_statement() -> ElseIfStatement<'a>
-            = ([Token::Else] [Token::If] / [Token::ElseIf]) [Token::LParen] c:expression() [Token::RParen] s:body() {
+            = (_ [Token::Else] _ [Token::If] / _ [Token::ElseIf]) _ [Token::LParen] c:expression() _ [Token::RParen] s:body() {
                 ElseIfStatement {
                     condition: c,
                     body: s,
@@ -133,10 +136,10 @@ peg::parser! {
             }
 
         rule else_statement() -> Vec<Statement<'a>>
-            = [Token::Else] s:body() {s}
+            = _ [Token::Else] s:body() {s}
 
         rule new_statement() -> Statement<'a>
-            = [Token::New] [Token::Ident(i)] [Token::Assign] e:ident_call_expr() [Token::Semicolon] {
+            = _ [Token::New] _ [Token::Ident(i)] _ [Token::Assign] e:ident_call_expr() _ [Token::Semicolon] {
                 Statement::New {
                     name: i,
                     value: e,
@@ -144,10 +147,10 @@ peg::parser! {
             }
 
         rule call_statement() -> Statement<'a>
-            = [Token::Call] [Token::Ident(i)] [Token::Semicolon] {Statement::Call { ident: i }}
+            = _ [Token::Call] _ [Token::Ident(i)] _ [Token::Semicolon] {Statement::Call { ident: i }}
 
         rule return_statement() -> Statement<'a>
-            = [Token::Return] [Token::LParen] [Token::Ident(i)] a:([Token::LParen] a:expression()**[Token::Comma] [Token::RParen] {a})? [Token::RParen] [Token::Semicolon] {
+            = _ [Token::Return] _ [Token::LParen] _ [Token::Ident(i)] a:(_ [Token::LParen] a:expression()**(_ [Token::Comma]) _ [Token::RParen] {a})? _ [Token::RParen] _ [Token::Semicolon] {
                 Statement::Return {
                     name: i,
                     args: a,
@@ -160,12 +163,12 @@ peg::parser! {
             / if_statement()
             / new_statement()
             / call_statement()
-            / e:ident_call_expr() [Token::Semicolon] {Statement::IdentCall(e)}
+            / e:ident_call_expr() _ [Token::Semicolon] {Statement::IdentCall(e)}
             / i:include() {Statement::Include(i)}
             / return_statement()
 
         rule sub() -> TopLevelDeclaration<'a>
-            = [Token::Sub] [Token::Ident(i)] s:body() {
+            = _ [Token::Sub] _ [Token::Ident(i)] s:body() {
                 TopLevelDeclaration::Sub {
                     name: i,
                     statements: s,
@@ -182,6 +185,6 @@ peg::parser! {
             / sub()
 
         pub rule source_file() -> SourceFile<'a>
-            = top_level_declaration()*
+            = d:top_level_declaration()* _ {d}
     }
 }

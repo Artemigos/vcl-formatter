@@ -157,15 +157,6 @@ fn main() {
         let mut lex = lexer::Token::lexer(data_str);
         let tokens: Vec<_> = lex
             .map(|t| t.unwrap())
-            .filter(|t| {
-                !matches!(
-                    t,
-                    lexer::Token::Newline(_)
-                        | lexer::Token::LineComment(_)
-                        | lexer::Token::MultilineComment(_)
-                        | lexer::Token::InlineCCode(_)
-                )
-            })
             .collect();
         if args.print {
             let mut stdout = std::io::stdout().lock();
