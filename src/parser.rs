@@ -48,14 +48,26 @@ peg::parser! {
                 TopLevelDeclaration::Import { ws_pre_import: i1, ws_pre_name: i2, ws_pre_semi: i3, name: i, from }
             }
 
+        rule mask() -> MaskData<'a>
+            = i1:_ [Token::Divide] i2:_ [Token::Number(n)] {
+                MaskData { ws_pre_op: i1, ws_pre_mask: i2, mask: n }
+            }
+
         rule acl_entry() -> AclEntry<'a>
-            = _ [Token::String(s)] mask:(_ [Token::Divide] _ [Token::Number(n)] {n})? _ [Token::Semicolon] {
-                AclEntry { value: s, mask }
+            = i1:_ [Token::String(s)] mask:mask()? i2:_ [Token::Semicolon] {
+                AclEntry { ws_pre_value: i1, ws_pre_semi: i2, value: s, mask }
             }
 
         rule acl() -> TopLevelDeclaration<'a>
-            = _ [Token::Acl] _ [Token::Ident(i)] _ [Token::LBrace] e:acl_entry()* _ [Token::RBrace] {
-                TopLevelDeclaration::Acl { name: i, entries: e }
+            = i1:_ [Token::Acl] i2:_ [Token::Ident(i)] i3:_ [Token::LBrace] e:acl_entry()* i4:_ [Token::RBrace] {
+                TopLevelDeclaration::Acl {
+                    ws_pre_acl: i1,
+                    ws_pre_name: i2,
+                    ws_pre_lbrace: i3,
+                    ws_pre_rbrace: i4,
+                    name: i,
+                    entries: e,
+                }
             }
 
         rule expression() -> Expression<'a> = precedence!{
@@ -93,30 +105,54 @@ peg::parser! {
         rule ident_call_expr() -> IdentCallExpression<'a>
             = _ [Token::Ident(i)] _ [Token::LParen] a:function_call_arg()**(_ [Token::Comma]) _ [Token::RParen] {IdentCallExpression { name: i, args: a }}
 
-        rule string_list() -> Vec<&'a str>
-            = s:(_ [Token::String(s)] {s})*<2,> {s}
+        rule string_list() -> Vec<StringListEntry<'a>>
+            = s:(i:_ [Token::String(s)] {StringListEntry { ws_pre_string: i, string: s }})*<2,> {s}
 
         rule backend_value() -> BackendValue<'a>
             = s:string_list() { BackendValue::StringList(s) }
             / e:expression() { BackendValue::Expression(e) }
-            / _ [Token::LBrace] p:backend_property()* _ [Token::RBrace] { BackendValue::Composite(p) }
+            / i1:_ [Token::LBrace] p:backend_property()* i2:_ [Token::RBrace] { BackendValue::Composite { ws_pre_lbrace: i1, ws_pre_rbrace: i2, properties: p } }
 
         rule backend_property() -> BackendProperty<'a>
-            = _ [Token::BackendPropIdent(i)] _ [Token::Assign] v:backend_value() _ [Token::Semicolon] {
-                BackendProperty { name: i, value: v }
+            = i1:_ [Token::BackendPropIdent(i)] i2:_ [Token::Assign] v:backend_value() i3:_ [Token::Semicolon] {
+                BackendProperty { ws_pre_name: i1, ws_pre_op: i2, ws_pre_semi: i3, name: i, value: v }
             }
 
         rule backend() -> TopLevelDeclaration<'a>
-            = _ [Token::Backend] _ [Token::Ident(i)] _ [Token::LBrace] p:backend_property()* _ [Token::RBrace] {
-                TopLevelDeclaration::Backend { name: i, properties: Some(p) }
+            = i1:_ [Token::Backend] i2:_ [Token::Ident(i)] i3:_ [Token::LBrace] p:backend_property()* i4:_ [Token::RBrace] {
+                TopLevelDeclaration::Backend(
+                    BackendData::Defined {
+                        ws_pre_backend: i1,
+                        ws_pre_name: i2,
+                        ws_pre_lbrace: i3,
+                        ws_pre_rbrace: i4,
+                        name: i,
+                        properties: p,
+                    }
+                )
             }
-            / _ [Token::Backend] _ [Token::Ident(i)] _ [Token::None] _ [Token::Semicolon] {
-                TopLevelDeclaration::Backend { name: i, properties: None }
+            / i1:_ [Token::Backend] i2:_ [Token::Ident(i)] i3:_ [Token::None] i4:_ [Token::Semicolon] {
+                TopLevelDeclaration::Backend(
+                    BackendData::None {
+                        ws_pre_backend: i1,
+                        ws_pre_name: i2,
+                        ws_pre_none: i3,
+                        ws_pre_semi: i4,
+                        name: i,
+                    }
+                )
             }
 
         rule probe() -> TopLevelDeclaration<'a>
-            = _ [Token::Probe] _ [Token::Ident(i)] _ [Token::LBrace] p:backend_property()* _ [Token::RBrace] {
-                TopLevelDeclaration::Probe { name: i, properties: p }
+            = i1:_ [Token::Probe] i2:_ [Token::Ident(i)] i3:_ [Token::LBrace] p:backend_property()* i4:_ [Token::RBrace] {
+                TopLevelDeclaration::Probe {
+                    ws_pre_probe: i1,
+                    ws_pre_name: i2,
+                    ws_pre_lbrace: i3,
+                    ws_pre_rbrace: i4,
+                    name: i,
+                    properties: p,
+                }
             }
 
         rule unset_statement() -> Statement<'a>

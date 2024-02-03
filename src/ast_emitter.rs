@@ -69,11 +69,23 @@ impl<'a> Emitter<'a> {
                 self.emit_import(name, from.as_ref())?
             }
             TopLevelDeclaration::Include(i) => self.emit_include(i)?,
-            TopLevelDeclaration::Acl { name, entries } => self.emit_acl(name, entries)?,
-            TopLevelDeclaration::Backend { name, properties } => {
-                self.emit_backend(name, properties.as_ref())?
-            }
-            TopLevelDeclaration::Probe { name, properties } => self.emit_probe(name, properties)?,
+            TopLevelDeclaration::Acl {
+                name,
+                entries,
+                ws_pre_acl,
+                ws_pre_name,
+                ws_pre_lbrace,
+                ws_pre_rbrace,
+            } => self.emit_acl(name, entries)?,
+            TopLevelDeclaration::Backend(b) => self.emit_backend(b)?,
+            TopLevelDeclaration::Probe {
+                name,
+                properties,
+                ws_pre_probe,
+                ws_pre_name,
+                ws_pre_lbrace,
+                ws_pre_rbrace,
+            } => self.emit_probe(name, properties)?,
             TopLevelDeclaration::Sub { name, statements } => self.emit_sub(name, statements)?,
         };
 
@@ -145,8 +157,8 @@ impl<'a> Emitter<'a> {
     fn emit_acl_entry(&mut self, e: &AclEntry) -> R {
         let v = e.value;
         self.emit_indent()?;
-        match e.mask {
-            Some(m) => writeln!(self.w, "{v}/{m};")?,
+        match &e.mask {
+            Some(m) => writeln!(self.w, "{v}/{};", m.mask)?,
             None => writeln!(self.w, "{v};")?,
         };
         Ok(())
@@ -172,10 +184,14 @@ impl<'a> Emitter<'a> {
                 self.emit_expression(e)?;
                 writeln!(self.w, ";")?;
             }
-            BackendValue::Composite(props) => {
+            BackendValue::Composite {
+                ws_pre_lbrace,
+                ws_pre_rbrace,
+                properties,
+            } => {
                 writeln!(self.w, " {{")?;
                 self.ci += 1;
-                for prop in props {
+                for prop in properties {
                     self.emit_backend_property(prop.name, &prop.value)?;
                 }
                 self.ci -= 1;
@@ -187,7 +203,7 @@ impl<'a> Emitter<'a> {
                 for val in l {
                     writeln!(self.w)?;
                     self.emit_indent();
-                    write!(self.w, "{val}")?;
+                    write!(self.w, "{}", val.string)?;
                 }
                 self.ci -= 1;
                 writeln!(self.w, ";")?;
@@ -238,18 +254,31 @@ impl<'a> Emitter<'a> {
         Ok(())
     }
 
-    fn emit_backend(&mut self, name: &str, properties: Option<&Vec<BackendProperty>>) -> R {
-        match properties {
-            Some(p) => {
+    fn emit_backend(&mut self, b: &BackendData) -> R {
+        match b {
+            BackendData::None {
+                ws_pre_backend,
+                ws_pre_name,
+                ws_pre_none,
+                ws_pre_semi,
+                name,
+            } => writeln!(self.w, "backend {name} none;")?,
+            BackendData::Defined {
+                ws_pre_backend,
+                ws_pre_name,
+                ws_pre_lbrace,
+                ws_pre_rbrace,
+                name,
+                properties,
+            } => {
                 writeln!(self.w, "backend {name} {{")?;
                 self.ci += 1;
-                for prop in p {
+                for prop in properties {
                     self.emit_backend_property(prop.name, &prop.value)?;
                 }
                 self.ci -= 1;
                 writeln!(self.w, "}}")?;
             }
-            None => writeln!(self.w, "backend {name} none;")?,
         };
         Ok(())
     }

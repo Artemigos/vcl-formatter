@@ -21,20 +21,44 @@ pub enum TopLevelDeclaration<'a> {
     },
     Include(IncludeData<'a>),
     Acl {
+        ws_pre_acl: WS<'a>,
+        ws_pre_name: WS<'a>,
+        ws_pre_lbrace: WS<'a>,
+        ws_pre_rbrace: WS<'a>,
         name: &'a str,
         entries: Vec<AclEntry<'a>>,
     },
-    Backend {
-        name: &'a str,
-        properties: Option<Vec<BackendProperty<'a>>>,
-    },
+    Backend(BackendData<'a>),
     Probe {
+        ws_pre_probe: WS<'a>,
+        ws_pre_name: WS<'a>,
+        ws_pre_lbrace: WS<'a>,
+        ws_pre_rbrace: WS<'a>,
         name: &'a str,
         properties: Vec<BackendProperty<'a>>,
     },
     Sub {
         name: &'a str,
         statements: Vec<Statement<'a>>,
+    },
+}
+
+#[derive(Debug)]
+pub enum BackendData<'a> {
+    Defined {
+        ws_pre_backend: WS<'a>,
+        ws_pre_name: WS<'a>,
+        ws_pre_lbrace: WS<'a>,
+        ws_pre_rbrace: WS<'a>,
+        name: &'a str,
+        properties: Vec<BackendProperty<'a>>,
+    },
+    None {
+        ws_pre_backend: WS<'a>,
+        ws_pre_name: WS<'a>,
+        ws_pre_none: WS<'a>,
+        ws_pre_semi: WS<'a>,
+        name: &'a str,
     },
 }
 
@@ -55,12 +79,24 @@ pub struct FromData<'a> {
 
 #[derive(Debug)]
 pub struct AclEntry<'a> {
+    pub ws_pre_value: WS<'a>,
+    pub ws_pre_semi: WS<'a>,
     pub value: &'a str,
-    pub mask: Option<&'a str>,
+    pub mask: Option<MaskData<'a>>,
+}
+
+#[derive(Debug)]
+pub struct MaskData<'a> {
+    pub ws_pre_op: WS<'a>,
+    pub ws_pre_mask: WS<'a>,
+    pub mask: &'a str,
 }
 
 #[derive(Debug)]
 pub struct BackendProperty<'a> {
+    pub ws_pre_name: WS<'a>,
+    pub ws_pre_op: WS<'a>,
+    pub ws_pre_semi: WS<'a>,
     pub name: &'a str,
     pub value: BackendValue<'a>,
 }
@@ -68,8 +104,18 @@ pub struct BackendProperty<'a> {
 #[derive(Debug)]
 pub enum BackendValue<'a> {
     Expression(Expression<'a>),
-    StringList(Vec<&'a str>),
-    Composite(Vec<BackendProperty<'a>>),
+    StringList(Vec<StringListEntry<'a>>),
+    Composite {
+        ws_pre_lbrace: WS<'a>,
+        ws_pre_rbrace: WS<'a>,
+        properties: Vec<BackendProperty<'a>>
+    },
+}
+
+#[derive(Debug)]
+pub struct StringListEntry<'a> {
+    pub ws_pre_string: WS<'a>,
+    pub string: &'a str,
 }
 
 #[derive(Debug)]
