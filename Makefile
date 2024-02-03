@@ -17,5 +17,5 @@ uninstall:
 .PHONY: uninstall
 
 bench: target/release/vcl-formatter
-	hyperfine -N --warmup 5 ./target/release/vcl-formatter example.vcl
+	hyperfine -N --warmup 5 './target/release/vcl-formatter example.vcl'
 .PHONY: bench
