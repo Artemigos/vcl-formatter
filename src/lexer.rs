@@ -28,12 +28,12 @@ fn comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Skip {
 
 fn token_callback<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<TokenData<'a>> {
     let start = lex.span().start;
-    let column = start - lex.extras.last_line_end;
+    let column = start - lex.extras.last_line_end + 1;
     let pre_trivia = &lex.source()[lex.extras.last_token_end..start];
     lex.extras.last_token_end = lex.span().end;
     Some(TokenData {
         content: lex.slice(),
-        line: lex.extras.line,
+        line: lex.extras.line + 1,
         column,
         pre_trivia,
     })
