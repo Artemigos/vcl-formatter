@@ -1,183 +1,217 @@
-use crate::lexer::Token;
-
-type WS<'a> = Vec<Token<'a>>;
+use crate::lexer::TokenData;
 
 pub type SourceFile<'a> = Vec<TopLevelDeclaration<'a>>;
 
 #[derive(Debug)]
 pub enum TopLevelDeclaration<'a> {
     VclVersion {
-        ws_pre_vcl: WS<'a>,
-        ws_pre_number: WS<'a>,
-        ws_pre_semi: WS<'a>,
-        number: &'a str,
+        vcl: TokenData<'a>,
+        number: TokenData<'a>,
+        semi: TokenData<'a>,
     },
     Import {
-        ws_pre_import: WS<'a>,
-        ws_pre_name: WS<'a>,
-        ws_pre_semi: WS<'a>,
-        name: &'a str,
+        import: TokenData<'a>,
+        name: TokenData<'a>,
         from: Option<FromData<'a>>,
     },
     Include(IncludeData<'a>),
     Acl {
-        ws_pre_acl: WS<'a>,
-        ws_pre_name: WS<'a>,
-        ws_pre_lbrace: WS<'a>,
-        ws_pre_rbrace: WS<'a>,
-        name: &'a str,
+        acl: TokenData<'a>,
+        name: TokenData<'a>,
+        lbrace: TokenData<'a>,
         entries: Vec<AclEntry<'a>>,
+        rbrace: TokenData<'a>,
     },
     Backend(BackendData<'a>),
     Probe {
-        ws_pre_probe: WS<'a>,
-        ws_pre_name: WS<'a>,
-        ws_pre_lbrace: WS<'a>,
-        ws_pre_rbrace: WS<'a>,
-        name: &'a str,
+        probe: TokenData<'a>,
+        name: TokenData<'a>,
+        lbrace: TokenData<'a>,
         properties: Vec<BackendProperty<'a>>,
+        rbrace: TokenData<'a>,
     },
     Sub {
-        name: &'a str,
+        sub: TokenData<'a>,
+        name: TokenData<'a>,
+        lbrace: TokenData<'a>,
         statements: Vec<Statement<'a>>,
+        rbrace: TokenData<'a>,
     },
 }
 
 #[derive(Debug)]
 pub enum BackendData<'a> {
     Defined {
-        ws_pre_backend: WS<'a>,
-        ws_pre_name: WS<'a>,
-        ws_pre_lbrace: WS<'a>,
-        ws_pre_rbrace: WS<'a>,
-        name: &'a str,
+        backend: TokenData<'a>,
+        name: TokenData<'a>,
+        lbrace: TokenData<'a>,
         properties: Vec<BackendProperty<'a>>,
+        rbrace: TokenData<'a>,
     },
     None {
-        ws_pre_backend: WS<'a>,
-        ws_pre_name: WS<'a>,
-        ws_pre_none: WS<'a>,
-        ws_pre_semi: WS<'a>,
-        name: &'a str,
+        backend: TokenData<'a>,
+        name: TokenData<'a>,
+        none: TokenData<'a>,
+        semi: TokenData<'a>,
     },
 }
 
 #[derive(Debug)]
 pub struct IncludeData<'a> {
-    pub ws_pre_include: WS<'a>,
-    pub ws_pre_name: WS<'a>,
-    pub ws_pre_semi: WS<'a>,
-    pub name: &'a str,
+    pub include: TokenData<'a>,
+    pub name: TokenData<'a>,
+    pub semi: TokenData<'a>,
 }
 
 #[derive(Debug)]
 pub struct FromData<'a> {
-    pub ws_pre_from: WS<'a>,
-    pub ws_pre_value: WS<'a>,
-    pub value: &'a str,
+    pub from: TokenData<'a>,
+    pub value: TokenData<'a>,
 }
 
 #[derive(Debug)]
 pub struct AclEntry<'a> {
-    pub ws_pre_value: WS<'a>,
-    pub ws_pre_semi: WS<'a>,
-    pub value: &'a str,
+    pub value: TokenData<'a>,
     pub mask: Option<MaskData<'a>>,
+    pub semi: TokenData<'a>,
 }
 
 #[derive(Debug)]
 pub struct MaskData<'a> {
-    pub ws_pre_op: WS<'a>,
-    pub ws_pre_mask: WS<'a>,
-    pub mask: &'a str,
+    pub op: TokenData<'a>,
+    pub mask: TokenData<'a>,
 }
 
 #[derive(Debug)]
 pub struct BackendProperty<'a> {
-    pub ws_pre_name: WS<'a>,
-    pub ws_pre_op: WS<'a>,
-    pub ws_pre_semi: WS<'a>,
-    pub name: &'a str,
+    pub name: TokenData<'a>,
+    pub op: TokenData<'a>,
     pub value: BackendValue<'a>,
+    pub semi: TokenData<'a>,
 }
 
 #[derive(Debug)]
 pub enum BackendValue<'a> {
     Expression(Expression<'a>),
-    StringList(Vec<StringListEntry<'a>>),
+    StringList(Vec<TokenData<'a>>),
     Composite {
-        ws_pre_lbrace: WS<'a>,
-        ws_pre_rbrace: WS<'a>,
-        properties: Vec<BackendProperty<'a>>
+        lbrace: TokenData<'a>,
+        properties: Vec<BackendProperty<'a>>,
+        rbrace: TokenData<'a>,
     },
 }
 
 #[derive(Debug)]
-pub struct StringListEntry<'a> {
-    pub ws_pre_string: WS<'a>,
-    pub string: &'a str,
+pub struct ElseIfStatement<'a> {
+    pub elseif: Vec<TokenData<'a>>,
+    pub lparen: TokenData<'a>,
+    pub condition: Expression<'a>,
+    pub rparen: TokenData<'a>,
+    pub lbrace: TokenData<'a>,
+    pub body: Vec<Statement<'a>>,
+    pub rbrace: TokenData<'a>,
 }
 
 #[derive(Debug)]
-pub struct ElseIfStatement<'a> {
-    pub condition: Expression<'a>,
+pub struct ElseStatement<'a> {
+    pub else_t: TokenData<'a>,
+    pub lbrace: TokenData<'a>,
     pub body: Vec<Statement<'a>>,
+    pub rbrace: TokenData<'a>,
 }
 
 #[derive(Debug)]
 pub struct IdentCallExpression<'a> {
-    pub name: &'a str,
+    pub name: TokenData<'a>,
+    pub lparen: TokenData<'a>,
     pub args: Vec<FunctionCallArg<'a>>,
+    pub commas: Vec<TokenData<'a>>,
+    pub rparen: TokenData<'a>,
+}
+
+#[derive(Debug)]
+pub struct ReturnArgs<'a> {
+    pub lparen: TokenData<'a>,
+    pub args: Vec<Expression<'a>>,
+    pub commas: Vec<TokenData<'a>>,
+    pub rparen: TokenData<'a>,
 }
 
 #[derive(Debug)]
 pub enum Statement<'a> {
     Set {
-        ident: &'a str,
-        op: &'a str,
+        set: TokenData<'a>,
+        ident: TokenData<'a>,
+        op: TokenData<'a>,
         expr: Expression<'a>,
+        semi: TokenData<'a>,
     },
     Unset {
-        ident: &'a str,
+        unset: TokenData<'a>,
+        ident: TokenData<'a>,
+        semi: TokenData<'a>,
     },
     Call {
-        ident: &'a str,
+        call: TokenData<'a>,
+        ident: TokenData<'a>,
+        semi: TokenData<'a>,
     },
     IdentCall(IdentCallExpression<'a>),
     If {
+        if_t: TokenData<'a>,
+        lparen: TokenData<'a>,
         condition: Expression<'a>,
+        rparen: TokenData<'a>,
+        lbrace: TokenData<'a>,
         body: Vec<Statement<'a>>,
+        rbrace: TokenData<'a>,
         elseifs: Vec<ElseIfStatement<'a>>,
-        else_st: Option<Vec<Statement<'a>>>,
+        else_st: Option<ElseStatement<'a>>,
     },
     Return {
-        name: &'a str,
-        args: Option<Vec<Expression<'a>>>,
+        return_t: TokenData<'a>,
+        lparen: TokenData<'a>,
+        name: TokenData<'a>,
+        args: Option<ReturnArgs<'a>>,
+        rparen: TokenData<'a>,
+        semi: TokenData<'a>,
     },
     New {
-        name: &'a str,
+        new: TokenData<'a>,
+        name: TokenData<'a>,
+        op: TokenData<'a>,
         value: IdentCallExpression<'a>,
+        semi: TokenData<'a>,
     },
     Include(IncludeData<'a>),
 }
 
 #[derive(Debug)]
 pub enum Expression<'a> {
-    Ident(&'a str),
-    Literal(&'a str),
-    Neg(Box<Expression<'a>>),
+    Ident(TokenData<'a>),
+    Literal(TokenData<'a>),
+    Neg {
+        op: TokenData<'a>,
+        expr: Box<Expression<'a>>,
+    },
     Binary {
         left: Box<Expression<'a>>,
-        op: &'a str,
+        op: TokenData<'a>,
         right: Box<Expression<'a>>,
     },
     IdentCall(IdentCallExpression<'a>),
+    Parenthesized {
+        lparen: TokenData<'a>,
+        expr: Box<Expression<'a>>,
+        rparen: TokenData<'a>,
+    },
 }
 
 #[derive(Debug)]
 pub enum FunctionCallArg<'a> {
     Named {
-        name: &'a str,
+        name: TokenData<'a>,
+        op: TokenData<'a>,
         value: Expression<'a>,
     },
     Positional(Expression<'a>),

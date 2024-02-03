@@ -10,5 +10,3 @@ authors = ["Łukasz Klimek"]
 clap = { version = "4.4.17", features = ["derive"] }
 logos = "0.13.0"
 peg = "0.8.2"
-tree-sitter = "~0.20.3"
-tree-sitter-vcl = { path = "vendor/varnishls/vendor/tree-sitter-vcl" }
