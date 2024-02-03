@@ -2,6 +2,7 @@
 #![warn(unused_results)]
 
 mod ast;
+mod ast_emitter;
 mod lexer;
 mod parser;
 
@@ -38,20 +39,13 @@ fn main() {
 
     let data_str = std::str::from_utf8(&data).unwrap();
     let mut lex = lexer::Token::lexer(data_str);
+    let tokens: Vec<_> = lex.map(|x| x.unwrap()).collect();
+    let ast = parser::vcl::source_file(&tokens).unwrap();
 
-    loop {
-        let token = lex.next();
-        if let Some(Ok(tok)) = token {
-            let data = lexer::get_token_data(tok).unwrap();
-            print!("{}{}", data.pre_trivia, data.content);
-        } else {
-            if let Some(Err(_)) = token {
-                panic!("lexing failed");
-            }
-            break;
-        }
-    }
+    let mut stdout = std::io::stdout().lock();
+    let mut emitter = ast_emitter::Emitter::new(&mut stdout, args.indent);
+    emitter.emit(&ast);
 
-    let final_trivia = &lex.source()[lex.extras.last_token_end..];
-    print!("{}", final_trivia);
+    // let final_trivia = &lex.source()[lex.extras.last_token_end..];
+    // print!("{}", final_trivia);
 }

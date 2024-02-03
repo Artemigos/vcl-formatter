@@ -45,101 +45,75 @@ impl<'a> Emitter<'a> {
 
     fn emit_toplevel_declaration(&mut self, td: &TopLevelDeclaration) -> R {
         match td {
-            TopLevelDeclaration::VclVersion {
-                number: v,
-                ws_pre_vcl,
-                ws_pre_number,
-                ws_pre_semi,
-            } => {
-                self.emit_all_ws(ws_pre_vcl)?;
-                self.emit_all_ws(ws_pre_number)?;
-                self.emit_all_ws(ws_pre_semi)?;
-                self.emit_vcl_version(v)?;
+            TopLevelDeclaration::VclVersion { number: v, .. } => {
+                self.emit_vcl_version(v.content)?;
             }
-            TopLevelDeclaration::Import {
-                name,
-                from,
-                ws_pre_import,
-                ws_pre_name,
-                ws_pre_semi,
-            } => {
-                self.emit_all_ws(ws_pre_import)?;
-                self.emit_all_ws(ws_pre_name)?;
-                self.emit_all_ws(ws_pre_semi)?;
-                self.emit_import(name, from.as_ref())?
+            TopLevelDeclaration::Import { name, from, .. } => {
+                self.emit_import(name.content, from.as_ref())?
             }
             TopLevelDeclaration::Include(i) => self.emit_include(i)?,
-            TopLevelDeclaration::Acl {
-                name,
-                entries,
-                ws_pre_acl,
-                ws_pre_name,
-                ws_pre_lbrace,
-                ws_pre_rbrace,
-            } => self.emit_acl(name, entries)?,
+            TopLevelDeclaration::Acl { name, entries, .. } => {
+                self.emit_acl(name.content, entries)?
+            }
             TopLevelDeclaration::Backend(b) => self.emit_backend(b)?,
             TopLevelDeclaration::Probe {
-                name,
-                properties,
-                ws_pre_probe,
-                ws_pre_name,
-                ws_pre_lbrace,
-                ws_pre_rbrace,
-            } => self.emit_probe(name, properties)?,
-            TopLevelDeclaration::Sub { name, statements } => self.emit_sub(name, statements)?,
+                name, properties, ..
+            } => self.emit_probe(name.content, properties)?,
+            TopLevelDeclaration::Sub {
+                name, statements, ..
+            } => self.emit_sub(name.content, statements)?,
         };
 
         Ok(())
     }
 
-    fn emit_all_ws(&mut self, ws: &Vec<Token>) -> R {
-        let mut at_newlines = 0;
-        for tok in ws {
-            match tok {
-                Token::LineComment(c) => {
-                    at_newlines = 0;
-                    write!(self.w, "{c}")?;
-                }
-                Token::MultilineComment(c) => {
-                    at_newlines = 0;
-                    write!(self.w, "{c}")?;
-                }
-                Token::InlineCCode(c) => {
-                    at_newlines = 0;
-                    write!(self.w, "{c}")?;
-                }
-                Token::Newline(_) => {
-                    at_newlines += 1;
-                    if at_newlines <= 2 {
-                        writeln!(self.w)?;
-                    }
-                }
-                _ => {
-                    return Err(E::ExpectedInlineToken);
-                }
-            };
-        }
-        Ok(())
-    }
+    // fn emit_all_ws(&mut self, ws: &Vec<Token>) -> R {
+    //     let mut at_newlines = 0;
+    //     for tok in ws {
+    //         match tok {
+    //             Token::LineComment(c) => {
+    //                 at_newlines = 0;
+    //                 write!(self.w, "{c}")?;
+    //             }
+    //             Token::MultilineComment(c) => {
+    //                 at_newlines = 0;
+    //                 write!(self.w, "{c}")?;
+    //             }
+    //             Token::InlineCCode(c) => {
+    //                 at_newlines = 0;
+    //                 write!(self.w, "{c}")?;
+    //             }
+    //             Token::Newline(_) => {
+    //                 at_newlines += 1;
+    //                 if at_newlines <= 2 {
+    //                     writeln!(self.w)?;
+    //                 }
+    //             }
+    //             _ => {
+    //                 return Err(E::ExpectedInlineToken);
+    //             }
+    //         };
+    //     }
+    //     Ok(())
+    // }
 
     fn emit_vcl_version(&mut self, v: &str) -> R {
-        write!(self.w, "vcl {v};")?;
+        writeln!(self.w, "vcl {v};")?;
         Ok(())
     }
 
     fn emit_import(&mut self, name: &str, from: Option<&FromData>) -> R {
         match from {
-            Some(FromData { value: f, .. }) => write!(self.w, "import {name} from {f};")?,
-            None => write!(self.w, "import {name};")?,
+            Some(FromData { value: f, .. }) => {
+                writeln!(self.w, "import {name} from {};", f.content)?
+            }
+            None => writeln!(self.w, "import {name};")?,
         };
         Ok(())
     }
 
     fn emit_include(&mut self, inc: &IncludeData) -> R {
-        self.emit_all_ws(&inc.ws_pre_include)?;
-        self.emit_all_ws(&inc.ws_pre_name)?;
-        self.emit_all_ws(&inc.ws_pre_semi)?;
-        write!(self.w, "include {};", inc.name)?;
+        writeln!(self.w, "include {};", inc.name.content)?;
         Ok(())
     }
 
@@ -155,10 +129,10 @@ impl<'a> Emitter<'a> {
     }
 
     fn emit_acl_entry(&mut self, e: &AclEntry) -> R {
-        let v = e.value;
+        let v = e.value.content;
         self.emit_indent()?;
         match &e.mask {
-            Some(m) => writeln!(self.w, "{v}/{};", m.mask)?,
+            Some(m) => writeln!(self.w, "{v}/{};", m.mask.content)?,
             None => writeln!(self.w, "{v};")?,
         };
         Ok(())
@@ -168,7 +142,7 @@ impl<'a> Emitter<'a> {
         writeln!(self.w, "probe {name} {{")?;
         self.ci += 1;
         for prop in properties {
-            self.emit_backend_property(prop.name, &prop.value)?;
+            self.emit_backend_property(prop.name.content, &prop.value)?;
         }
         self.ci -= 1;
         writeln!(self.w, "}}")?;
@@ -184,15 +158,11 @@ impl<'a> Emitter<'a> {
                 self.emit_expression(e)?;
                 writeln!(self.w, ";")?;
             }
-            BackendValue::Composite {
-                ws_pre_lbrace,
-                ws_pre_rbrace,
-                properties,
-            } => {
+            BackendValue::Composite { properties, .. } => {
                 writeln!(self.w, " {{")?;
                 self.ci += 1;
                 for prop in properties {
-                    self.emit_backend_property(prop.name, &prop.value)?;
+                    self.emit_backend_property(prop.name.content, &prop.value)?;
                 }
                 self.ci -= 1;
                 self.emit_indent();
@@ -203,7 +173,7 @@ impl<'a> Emitter<'a> {
                 for val in l {
                     writeln!(self.w)?;
                     self.emit_indent();
-                    write!(self.w, "{}", val.string)?;
+                    write!(self.w, "{}", val.content)?;
                 }
                 self.ci -= 1;
                 writeln!(self.w, ";")?;
@@ -214,26 +184,35 @@ impl<'a> Emitter<'a> {
 
     fn emit_expression(&mut self, expr: &Expression) -> R {
         match expr {
-            Expression::Ident(i) => write!(self.w, "{i}")?,
-            Expression::Literal(l) => write!(self.w, "{l}")?,
-            Expression::Neg(e) => {
+            Expression::Ident(i) => write!(self.w, "{}", i.content)?,
+            Expression::Literal(l) => write!(self.w, "{}", l.content)?,
+            Expression::Neg { expr, .. } => {
                 write!(self.w, "!")?;
-                self.emit_expression(e)?;
+                self.emit_expression(expr)?;
             }
             Expression::Binary { left, op, right } => {
                 self.emit_expression(left)?;
-                write!(self.w, " {op} ")?;
+                write!(self.w, " {} ", op.content)?;
                 self.emit_expression(right)?;
             }
             Expression::IdentCall(e) => {
                 self.emit_ident_call(e)?;
+            }
+            Expression::Parenthesized {
+                lparen,
+                expr,
+                rparen,
+            } => {
+                write!(self.w, "(")?;
+                self.emit_expression(expr)?;
+                write!(self.w, ")")?;
             }
         };
         Ok(())
     }
 
     fn emit_ident_call(&mut self, e: &IdentCallExpression) -> R {
-        let n = e.name;
+        let n = e.name.content;
         write!(self.w, "{n}(")?;
         let mut first = true;
         for arg in &e.args {
@@ -243,8 +222,8 @@ impl<'a> Emitter<'a> {
                 write!(self.w, ", ")?;
             };
             match arg {
-                FunctionCallArg::Named { name, value } => {
-                    write!(self.w, "{name} = ")?;
+                FunctionCallArg::Named { name, value, .. } => {
+                    write!(self.w, "{} = ", name.content)?;
                     self.emit_expression(value)?;
                 }
                 FunctionCallArg::Positional(p) => self.emit_expression(p)?,
@@ -256,25 +235,14 @@ impl<'a> Emitter<'a> {
 
     fn emit_backend(&mut self, b: &BackendData) -> R {
         match b {
-            BackendData::None {
-                ws_pre_backend,
-                ws_pre_name,
-                ws_pre_none,
-                ws_pre_semi,
-                name,
-            } => writeln!(self.w, "backend {name} none;")?,
+            BackendData::None { name, .. } => writeln!(self.w, "backend {} none;", name.content)?,
             BackendData::Defined {
-                ws_pre_backend,
-                ws_pre_name,
-                ws_pre_lbrace,
-                ws_pre_rbrace,
-                name,
-                properties,
+                name, properties, ..
             } => {
-                writeln!(self.w, "backend {name} {{")?;
+                writeln!(self.w, "backend {} {{", name.content)?;
                 self.ci += 1;
                 for prop in properties {
-                    self.emit_backend_property(prop.name, &prop.value)?;
+                    self.emit_backend_property(prop.name.content, &prop.value)?;
                 }
                 self.ci -= 1;
                 writeln!(self.w, "}}")?;
@@ -297,13 +265,15 @@ impl<'a> Emitter<'a> {
     fn emit_statement(&mut self, st: &Statement) -> R {
         self.emit_indent();
         match st {
-            Statement::Set { ident, op, expr } => {
-                write!(self.w, "set {ident} {op} ")?;
+            Statement::Set {
+                ident, op, expr, ..
+            } => {
+                write!(self.w, "set {} {} ", ident.content, op.content)?;
                 self.emit_expression(expr)?;
                 writeln!(self.w, ";")?;
             }
-            Statement::Unset { ident } => writeln!(self.w, "unset {ident};")?,
-            Statement::Call { ident } => writeln!(self.w, "call {ident};")?,
+            Statement::Unset { ident, .. } => writeln!(self.w, "unset {};", ident.content)?,
+            Statement::Call { ident, .. } => writeln!(self.w, "call {};", ident.content)?,
             Statement::IdentCall(i) => {
                 self.emit_ident_call(i)?;
                 writeln!(self.w, ";")?;
@@ -313,6 +283,7 @@ impl<'a> Emitter<'a> {
                 body,
                 elseifs,
                 else_st,
+                ..
             } => {
                 write!(self.w, "if (")?;
                 self.emit_expression(condition)?;
@@ -337,7 +308,7 @@ impl<'a> Emitter<'a> {
                     self.emit_indent();
                     writeln!(self.w, "}} else {{")?;
                     self.ci += 1;
-                    for st in e {
+                    for st in &e.body {
                         self.emit_statement(st);
                     }
                     self.ci -= 1;
@@ -345,12 +316,12 @@ impl<'a> Emitter<'a> {
                 self.emit_indent();
                 writeln!(self.w, "}}")?;
             }
-            Statement::Return { name, args } => {
-                write!(self.w, "return ({name}")?;
+            Statement::Return { name, args, .. } => {
+                write!(self.w, "return ({}", name.content)?;
                 if let Some(args) = args {
                     write!(self.w, "(")?;
                     let mut first = true;
-                    for arg in args {
+                    for arg in &args.args {
                         if first {
                             first = false;
                         } else {
@@ -362,8 +333,8 @@ impl<'a> Emitter<'a> {
                 }
                 writeln!(self.w, ");")?;
             }
-            Statement::New { name, value } => {
-                write!(self.w, "new {name} = ")?;
+            Statement::New { name, value, .. } => {
+                write!(self.w, "new {} = ", name.content)?;
                 self.emit_ident_call(value)?;
                 writeln!(self.w, ";")?;
             }
