@@ -1,5 +1,14 @@
 use logos::{Lexer, Logos, Skip};
 
+pub fn lex<'a>(data_str: &'a str) -> Result<Vec<Token<'a>>, ()> {
+    let mut lex = Token::lexer(data_str);
+    let mut iter = TokenIter {
+        lex,
+        lex_done: false,
+    };
+    iter.collect()
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct TokenData<'a> {
     pub content: &'a str,
@@ -10,9 +19,36 @@ pub struct TokenData<'a> {
 
 #[derive(Default)]
 pub struct LexerState {
-    pub line: usize,
-    pub last_line_end: usize,
-    pub last_token_end: usize,
+    line: usize,
+    last_line_end: usize,
+    last_token_end: usize,
+}
+
+struct TokenIter<'a> {
+    lex: Lexer<'a, Token<'a>>,
+    lex_done: bool,
+}
+
+impl<'a> Iterator for TokenIter<'a> {
+    type Item = Result<Token<'a>, ()>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.lex_done {
+            None
+        } else if let Some(r) = self.lex.next() {
+            Some(r)
+        } else {
+            self.lex_done = true;
+            let final_trivia = &self.lex.source()[self.lex.extras.last_token_end..];
+            let data = TokenData {
+                content: "",
+                line: self.lex.extras.line + 1,
+                column: self.lex.source().len() - self.lex.extras.last_line_end + 1,
+                pre_trivia: final_trivia,
+            };
+            Some(Ok(Token::EOF(data)))
+        }
+    }
 }
 
 fn newline_callback<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Skip {
@@ -225,9 +261,10 @@ pub enum Token<'a> {
     #[regex(r#"C\{([^\}]|\}[^C])*\}C"#, comment)]
     InlineCCode,
 
-    // maybe?
     #[regex(r"(\r\n|\n|\r)", newline_callback)]
     Newline,
+
+    EOF(TokenData<'a>),
 }
 
 pub fn get_token_data<'a>(t: Token<'a>) -> Option<TokenData<'a>> {
@@ -293,5 +330,6 @@ pub fn get_token_data<'a>(t: Token<'a>) -> Option<TokenData<'a>> {
         Token::MultilineComment => None,
         Token::InlineCCode => None,
         Token::Newline => None,
+        Token::EOF(x) => Some(x),
     }
 }

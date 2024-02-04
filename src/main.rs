@@ -39,14 +39,10 @@ fn main() {
     };
 
     let data_str = std::str::from_utf8(&data).unwrap();
-    let mut lex = lexer::Token::lexer(data_str);
-    let tokens: Vec<_> = lex.map(|x| x.unwrap()).collect();
+    let tokens = lexer::lex(data_str).unwrap();
     let ast = parser::vcl::source_file(&tokens).unwrap();
 
     let mut stdout = std::io::stdout().lock();
     let mut emitter = ast_emitter::AstEmitter::new(&mut stdout, args.indent);
     emitter.emit(&ast);
-
-    // let final_trivia = &lex.source()[lex.extras.last_token_end..];
-    // print!("{}", final_trivia);
 }

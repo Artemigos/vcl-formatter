@@ -1,6 +1,9 @@
 use crate::lexer::TokenData;
 
-pub type SourceFile<'a> = Vec<TopLevelDeclaration<'a>>;
+pub struct SourceFile<'a> {
+    pub declarations: Vec<TopLevelDeclaration<'a>>,
+    pub eof: TokenData<'a>,
+}
 
 #[derive(Debug)]
 pub enum TopLevelDeclaration<'a> {

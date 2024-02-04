@@ -27,7 +27,7 @@ impl<'a> AstEmitter<'a> {
     }
 
     pub fn emit(&mut self, sf: &SourceFile) -> R {
-        for td in sf {
+        for td in &sf.declarations {
             self.emit_toplevel_declaration(td)?;
         }
         self.e.file_end();

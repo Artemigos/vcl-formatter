@@ -60,6 +60,7 @@ peg::parser! {
         rule modulo() -> TokenData<'a> = [Token::Modulo(d)] {d}
         rule bitwiseAnd() -> TokenData<'a> = [Token::BitwiseAnd(d)] {d}
         rule bitwiseOr() -> TokenData<'a> = [Token::BitwiseOr(d)] {d}
+        rule eof() -> TokenData<'a> = [Token::EOF(d)] {d}
 
         rule assign_op() -> TokenData<'a>
             = assign()
@@ -261,6 +262,8 @@ peg::parser! {
             / sub_decl()
 
         pub rule source_file() -> SourceFile<'a>
-            = d:top_level_declaration()* {d}
+            = declarations:top_level_declaration()* eof:eof() {
+                SourceFile { declarations, eof }
+            }
     }
 }
