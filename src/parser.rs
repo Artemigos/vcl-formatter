@@ -93,7 +93,7 @@ peg::parser! {
 
         rule import_decl() -> TopLevelDeclaration<'a>
             = import:import() name:ident() from:import_from()? semi:semicolon() {
-                TopLevelDeclaration::Import { import, name, from }
+                TopLevelDeclaration::Import { import, name, from, semi }
             }
 
         rule mask() -> MaskData<'a>
@@ -150,24 +150,28 @@ peg::parser! {
             / e:expression() {FunctionCallArg::Positional(e)}
 
         rule ident_call_expr() -> IdentCallExpression<'a>
-            = name:ident() lparen:lParen() a:function_call_arg()**(comma()) rparen:rParen() {
+            = name:ident() lparen:lParen() args:function_call_arg()**(comma()) rparen:rParen() {
                 // TODO: commas
-                IdentCallExpression { name, lparen, args:a, commas: vec![], rparen }
+                IdentCallExpression { name, lparen, args, commas: vec![], rparen }
             }
 
         rule string_list() -> Vec<TokenData<'a>>
             = string()*<2,>
 
         rule backend_value() -> BackendValue<'a>
-            = s:string_list() { BackendValue::StringList(s) }
-            / e:expression() { BackendValue::Expression(e) }
+            = strings:string_list() semi:semicolon() {
+                BackendValue::StringList { strings, semi }
+            }
+            / expr:expression() semi:semicolon() {
+                BackendValue::Expression { expr, semi }
+            }
             / lbrace:lBrace() properties:backend_property()* rbrace:rBrace() {
                 BackendValue::Composite { lbrace, properties, rbrace }
             }
 
         rule backend_property() -> BackendProperty<'a>
-            = name:backendPropIdent() op:assign() value:backend_value() semi:semicolon() {
-                BackendProperty { name, op, value, semi }
+            = name:backendPropIdent() op:assign() value:backend_value() {
+                BackendProperty { name, op, value }
             }
 
         rule backend_decl() -> TopLevelDeclaration<'a>
@@ -243,7 +247,9 @@ peg::parser! {
             / if_statement()
             / new_statement()
             / call_statement()
-            / e:ident_call_expr() semi:semicolon() {Statement::IdentCall(e)}
+            / expr:ident_call_expr() semi:semicolon() {
+                Statement::IdentCall { expr, semi }
+            }
             / i:include_decl() {Statement::Include(i)}
             / return_statement()
 

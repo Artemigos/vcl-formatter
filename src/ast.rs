@@ -16,6 +16,7 @@ pub enum TopLevelDeclaration<'a> {
         import: TokenData<'a>,
         name: TokenData<'a>,
         from: Option<FromData<'a>>,
+        semi: TokenData<'a>,
     },
     Include(IncludeData<'a>),
     Acl {
@@ -90,13 +91,18 @@ pub struct BackendProperty<'a> {
     pub name: TokenData<'a>,
     pub op: TokenData<'a>,
     pub value: BackendValue<'a>,
-    pub semi: TokenData<'a>,
 }
 
 #[derive(Debug)]
 pub enum BackendValue<'a> {
-    Expression(Expression<'a>),
-    StringList(Vec<TokenData<'a>>),
+    Expression {
+        expr: Expression<'a>,
+        semi: TokenData<'a>,
+    },
+    StringList {
+        strings: Vec<TokenData<'a>>,
+        semi: TokenData<'a>,
+    },
     Composite {
         lbrace: TokenData<'a>,
         properties: Vec<BackendProperty<'a>>,
@@ -159,7 +165,10 @@ pub enum Statement<'a> {
         ident: TokenData<'a>,
         semi: TokenData<'a>,
     },
-    IdentCall(IdentCallExpression<'a>),
+    IdentCall {
+        expr: IdentCallExpression<'a>,
+        semi: TokenData<'a>,
+    },
     If {
         if_t: TokenData<'a>,
         lparen: TokenData<'a>,
