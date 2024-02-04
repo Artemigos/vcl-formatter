@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::{ast::*, lexer::Token};
+use crate::{ast::*, emitter::Emitter, lexer::Token};
 
 #[derive(Debug)]
 pub enum E {
@@ -16,30 +16,21 @@ impl From<std::io::Error> for E {
 
 type R = Result<(), E>;
 
-pub struct Emitter<'a> {
-    w: &'a mut dyn Write,
-    ind: usize,
-    ci: usize,
+pub struct AstEmitter<'a> {
+    e: crate::emitter::StandardEmitter<'a>,
 }
 
-impl<'a> Emitter<'a> {
+impl<'a> AstEmitter<'a> {
     pub fn new(writer: &'a mut dyn Write, indent: usize) -> Self {
-        Self {
-            w: writer,
-            ind: indent,
-            ci: 0,
-        }
+        let mut e = crate::emitter::StandardEmitter::new(writer, indent);
+        Self { e }
     }
 
     pub fn emit(&mut self, sf: &SourceFile) -> R {
         for td in sf {
             self.emit_toplevel_declaration(td)?;
         }
-        Ok(())
-    }
-
-    fn emit_indent(&mut self) -> R {
-        write!(self.w, "{:<i$}", "", i = self.ci * self.ind)?;
+        self.e.file_end();
         Ok(())
     }
 
@@ -67,116 +58,83 @@ impl<'a> Emitter<'a> {
         Ok(())
     }
 
-    // fn emit_all_ws(&mut self, ws: &Vec<Token>) -> R {
-    //     let mut at_newlines = 0;
-    //     for tok in ws {
-    //         match tok {
-    //             Token::LineComment(c) => {
-    //                 at_newlines = 0;
-    //                 write!(self.w, "{c}")?;
-    //             }
-    //             Token::MultilineComment(c) => {
-    //                 at_newlines = 0;
-    //                 write!(self.w, "{c}")?;
-    //             }
-    //             Token::InlineCCode(c) => {
-    //                 at_newlines = 0;
-    //                 write!(self.w, "{c}")?;
-    //             }
-    //             Token::Newline(_) => {
-    //                 at_newlines += 1;
-    //                 if at_newlines <= 2 {
-    //                     writeln!(self.w)?;
-    //                 }
-    //             }
-    //             _ => {
-    //                 return Err(E::ExpectedInlineToken);
-    //             }
-    //         };
-    //     }
-    //     Ok(())
-    // }
-
     fn emit_vcl_version(&mut self, v: &str) -> R {
-        writeln!(self.w, "vcl {v};")?;
+        self.e.vcl_keyword();
+        self.e.number(v);
+        self.e.semicolon();
         Ok(())
     }
 
     fn emit_import(&mut self, name: &str, from: Option<&FromData>) -> R {
-        match from {
-            Some(FromData { value: f, .. }) => {
-                writeln!(self.w, "import {name} from {};", f.content)?
-            }
-            None => writeln!(self.w, "import {name};")?,
-        };
+        self.e.import_keyword();
+        self.e.ident(name);
+        if let Some(FromData { value: f, .. }) = from {
+            self.e.from_keyword();
+            self.e.string(f.content);
+        }
+        self.e.semicolon();
         Ok(())
     }
 
     fn emit_include(&mut self, inc: &IncludeData) -> R {
-        writeln!(self.w, "include {};", inc.name.content)?;
+        self.e.include_keyword();
+        self.e.string(inc.name.content);
+        self.e.semicolon();
         Ok(())
     }
 
     fn emit_acl(&mut self, name: &str, entries: &Vec<AclEntry>) -> R {
-        writeln!(self.w, "acl {name} {{")?;
-        self.ci += 1;
+        self.e.acl_keyword();
+        self.e.ident(name);
+        self.e.body_start();
         for entry in entries {
             self.emit_acl_entry(entry)?;
         }
-        self.ci -= 1;
-        writeln!(self.w, "}}")?;
+        self.e.body_end();
         Ok(())
     }
 
     fn emit_acl_entry(&mut self, e: &AclEntry) -> R {
-        let v = e.value.content;
-        self.emit_indent()?;
-        match &e.mask {
-            Some(m) => writeln!(self.w, "{v}/{};", m.mask.content)?,
-            None => writeln!(self.w, "{v};")?,
-        };
+        self.e.string(e.value.content);
+        if let Some(m) = &e.mask {
+            self.e.infix_operator("/");
+            self.e.number(m.mask.content);
+        }
+        self.e.semicolon();
         Ok(())
     }
 
     fn emit_probe(&mut self, name: &str, properties: &Vec<BackendProperty>) -> R {
-        writeln!(self.w, "probe {name} {{")?;
-        self.ci += 1;
+        self.e.probe_keyword();
+        self.e.ident(name);
+        self.e.body_start();
         for prop in properties {
             self.emit_backend_property(prop.name.content, &prop.value)?;
         }
-        self.ci -= 1;
-        writeln!(self.w, "}}")?;
+        self.e.body_end();
         Ok(())
     }
 
     fn emit_backend_property(&mut self, name: &str, value: &BackendValue) -> R {
-        self.emit_indent()?;
-        write!(self.w, "{name} =")?;
+        self.e.ident(name);
+        self.e.infix_operator("=");
         match &value {
             BackendValue::Expression(e) => {
-                write!(self.w, " ")?;
                 self.emit_expression(e)?;
-                writeln!(self.w, ";")?;
+                self.e.semicolon();
             }
             BackendValue::Composite { properties, .. } => {
-                writeln!(self.w, " {{")?;
-                self.ci += 1;
+                self.e.body_start();
                 for prop in properties {
                     self.emit_backend_property(prop.name.content, &prop.value)?;
                 }
-                self.ci -= 1;
-                self.emit_indent();
-                writeln!(self.w, "}}")?;
+                self.e.body_end();
             }
             BackendValue::StringList(l) => {
-                self.ci += 1;
                 for val in l {
-                    writeln!(self.w)?;
-                    self.emit_indent();
-                    write!(self.w, "{}", val.content)?;
+                    self.e.string(val.content);
                 }
-                self.ci -= 1;
-                writeln!(self.w, ";")?;
+                self.e.semicolon();
             }
         };
         Ok(())
@@ -184,15 +142,15 @@ impl<'a> Emitter<'a> {
 
     fn emit_expression(&mut self, expr: &Expression) -> R {
         match expr {
-            Expression::Ident(i) => write!(self.w, "{}", i.content)?,
-            Expression::Literal(l) => write!(self.w, "{}", l.content)?,
+            Expression::Ident(i) => self.e.ident(i.content),
+            Expression::Literal(l) => self.e.ident(l.content),
             Expression::Neg { expr, .. } => {
-                write!(self.w, "!")?;
+                self.e.prefix_operator("!");
                 self.emit_expression(expr)?;
             }
             Expression::Binary { left, op, right } => {
                 self.emit_expression(left)?;
-                write!(self.w, " {} ", op.content)?;
+                self.e.infix_operator(op.content);
                 self.emit_expression(right)?;
             }
             Expression::IdentCall(e) => {
@@ -203,80 +161,94 @@ impl<'a> Emitter<'a> {
                 expr,
                 rparen,
             } => {
-                write!(self.w, "(")?;
+                self.e.l_paren();
                 self.emit_expression(expr)?;
-                write!(self.w, ")")?;
+                self.e.r_paren();
             }
         };
         Ok(())
     }
 
     fn emit_ident_call(&mut self, e: &IdentCallExpression) -> R {
-        let n = e.name.content;
-        write!(self.w, "{n}(")?;
+        self.e.ident(e.name.content);
+        self.e.l_paren();
         let mut first = true;
         for arg in &e.args {
             if first {
                 first = false;
             } else {
-                write!(self.w, ", ")?;
+                self.e.comma();
             };
             match arg {
                 FunctionCallArg::Named { name, value, .. } => {
-                    write!(self.w, "{} = ", name.content)?;
+                    self.e.ident(name.content);
+                    self.e.infix_operator("=");
                     self.emit_expression(value)?;
                 }
                 FunctionCallArg::Positional(p) => self.emit_expression(p)?,
             };
         }
-        write!(self.w, ")")?;
+        self.e.r_paren();
         Ok(())
     }
 
     fn emit_backend(&mut self, b: &BackendData) -> R {
+        self.e.backend_keyword();
         match b {
-            BackendData::None { name, .. } => writeln!(self.w, "backend {} none;", name.content)?,
+            BackendData::None { name, .. } => {
+                self.e.ident(name.content);
+                self.e.none_keyword();
+                self.e.semicolon();
+            }
             BackendData::Defined {
                 name, properties, ..
             } => {
-                writeln!(self.w, "backend {} {{", name.content)?;
-                self.ci += 1;
+                self.e.ident(name.content);
+                self.e.body_start();
                 for prop in properties {
                     self.emit_backend_property(prop.name.content, &prop.value)?;
                 }
-                self.ci -= 1;
-                writeln!(self.w, "}}")?;
+                self.e.body_end();
             }
         };
         Ok(())
     }
 
     fn emit_sub(&mut self, name: &str, statements: &Vec<Statement>) -> R {
-        writeln!(self.w, "sub {name} {{")?;
-        self.ci += 1;
+        self.e.sub_keyword();
+        self.e.ident(name);
+        self.e.body_start();
         for st in statements {
             self.emit_statement(st)?;
         }
-        self.ci -= 1;
-        writeln!(self.w, "}}")?;
+        self.e.body_end();
         Ok(())
     }
 
     fn emit_statement(&mut self, st: &Statement) -> R {
-        self.emit_indent();
         match st {
             Statement::Set {
                 ident, op, expr, ..
             } => {
-                write!(self.w, "set {} {} ", ident.content, op.content)?;
+                self.e.set_keyword();
+                self.e.ident(ident.content);
+                self.e.infix_operator(op.content);
                 self.emit_expression(expr)?;
-                writeln!(self.w, ";")?;
+                self.e.semicolon();
             }
-            Statement::Unset { ident, .. } => writeln!(self.w, "unset {};", ident.content)?,
-            Statement::Call { ident, .. } => writeln!(self.w, "call {};", ident.content)?,
+            Statement::Unset { ident, .. } => {
+                self.e.unset_keyword();
+                self.e.ident(ident.content);
+                self.e.semicolon();
+            }
+            Statement::Call { ident, .. } => {
+                self.e.call_keyword();
+                self.e.ident(ident.content);
+                self.e.semicolon();
+            }
             Statement::IdentCall(i) => {
                 self.emit_ident_call(i)?;
-                writeln!(self.w, ";")?;
+                self.e.semicolon();
             }
             Statement::If {
                 condition,
@@ -285,58 +257,62 @@ impl<'a> Emitter<'a> {
                 else_st,
                 ..
             } => {
-                write!(self.w, "if (")?;
+                self.e.if_keyword();
+                self.e.l_paren();
                 self.emit_expression(condition)?;
-                writeln!(self.w, ") {{")?;
-                self.ci += 1;
+                self.e.r_paren();
+                self.e.body_start();
                 for st in body {
                     self.emit_statement(st)?;
                 }
-                self.ci -= 1;
                 for ei in elseifs {
-                    self.emit_indent();
-                    write!(self.w, "}} else if (")?;
+                    self.e.body_end();
+                    self.e.else_keyword();
+                    self.e.if_keyword();
+                    self.e.l_paren();
                     self.emit_expression(&ei.condition)?;
-                    writeln!(self.w, ") {{")?;
-                    self.ci += 1;
+                    self.e.r_paren();
+                    self.e.body_start();
                     for st in &ei.body {
                         self.emit_statement(st);
                     }
-                    self.ci -= 1;
                 }
                 if let Some(e) = else_st {
-                    self.emit_indent();
-                    writeln!(self.w, "}} else {{")?;
-                    self.ci += 1;
+                    self.e.body_end();
+                    self.e.else_keyword();
+                    self.e.body_start();
                     for st in &e.body {
                         self.emit_statement(st);
                     }
-                    self.ci -= 1;
                 }
-                self.emit_indent();
-                writeln!(self.w, "}}")?;
+                self.e.body_end();
             }
             Statement::Return { name, args, .. } => {
-                write!(self.w, "return ({}", name.content)?;
+                self.e.return_keyword();
+                self.e.l_paren();
+                self.e.ident(name.content);
                 if let Some(args) = args {
-                    write!(self.w, "(")?;
+                    self.e.l_paren();
                     let mut first = true;
                     for arg in &args.args {
                         if first {
                             first = false;
                         } else {
-                            write!(self.w, ", ")?;
+                            self.e.comma();
                         };
                         self.emit_expression(arg)?;
                     }
-                    write!(self.w, ")")?;
+                    self.e.r_paren();
                 }
-                writeln!(self.w, ");")?;
+                self.e.r_paren();
+                self.e.semicolon();
             }
             Statement::New { name, value, .. } => {
-                write!(self.w, "new {} = ", name.content)?;
+                self.e.new_keyword();
+                self.e.ident(name.content);
+                self.e.infix_operator("=");
                 self.emit_ident_call(value)?;
-                writeln!(self.w, ";")?;
+                self.e.semicolon();
             }
             Statement::Include(i) => self.emit_include(i)?,
         };

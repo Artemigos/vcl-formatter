@@ -3,6 +3,7 @@
 
 mod ast;
 mod ast_emitter;
+mod emitter;
 mod lexer;
 mod parser;
 
@@ -43,7 +44,7 @@ fn main() {
     let ast = parser::vcl::source_file(&tokens).unwrap();
 
     let mut stdout = std::io::stdout().lock();
-    let mut emitter = ast_emitter::Emitter::new(&mut stdout, args.indent);
+    let mut emitter = ast_emitter::AstEmitter::new(&mut stdout, args.indent);
     emitter.emit(&ast);
 
     // let final_trivia = &lex.source()[lex.extras.last_token_end..];
