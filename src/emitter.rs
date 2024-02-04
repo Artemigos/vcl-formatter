@@ -33,6 +33,7 @@ pub trait Emitter {
     fn comment(&mut self, comment: &str);
     fn newlines(&mut self, how_many: usize);
     fn file_end(&mut self);
+    fn hint_string_list_start(&mut self);
 }
 
 pub struct StandardEmitter<'a> {
@@ -151,6 +152,9 @@ impl<'a> Emitter for StandardEmitter<'a> {
     }
 
     fn string(&mut self, string: &str) {
+        if self.in_string_list && !self.new_line {
+            self.new_line_pending = true;
+        }
         self.flush_preceding_whitespace();
         write!(self.write, "{}", string).unwrap();
         self.needs_whitespace = true;
@@ -306,6 +310,11 @@ impl<'a> Emitter for StandardEmitter<'a> {
 
     fn new_keyword(&mut self) {
         self.keyword("new");
+    }
+
+    fn hint_string_list_start(&mut self) {
+        self.in_string_list = true;
+        self.increase_nest();
     }
 }
 

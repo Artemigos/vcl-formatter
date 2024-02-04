@@ -1,16 +1,27 @@
 use std::io::Write;
 
-use crate::{ast::*, emitter::Emitter, lexer::Token};
+use crate::{
+    ast::*,
+    emitter::Emitter,
+    lexer::{lex_trivia, Token, TokenData, TriviaToken},
+};
 
 #[derive(Debug)]
 pub enum E {
     IO(std::io::Error),
     ExpectedInlineToken,
+    LexingWhitespaceFailed,
 }
 
 impl From<std::io::Error> for E {
     fn from(value: std::io::Error) -> Self {
         E::IO(value)
+    }
+}
+
+impl From<()> for E {
+    fn from(value: ()) -> Self {
+        E::LexingWhitespaceFailed
     }
 }
 
@@ -34,112 +45,241 @@ impl<'a> AstEmitter<'a> {
         Ok(())
     }
 
+    fn emit_all_trivia(&mut self, token: &TokenData) -> R {
+        let tokens = lex_trivia(token.pre_trivia)?;
+        let mut curr_lines = 0;
+        for t in &tokens {
+            match t {
+                TriviaToken::LineComment(s)
+                | TriviaToken::MultilineComment(s)
+                | TriviaToken::InlineCCode(s) => {
+                    if curr_lines > 0 {
+                        self.e.newlines(curr_lines);
+                        curr_lines = 0;
+                    }
+                    self.e.comment(s);
+                }
+                TriviaToken::Newline => curr_lines += 1,
+            }
+        }
+        if curr_lines > 0 {
+            self.e.newlines(curr_lines);
+        }
+        Ok(())
+    }
+
+    fn emit_comments(&mut self, token: &TokenData) -> R {
+        let tokens = lex_trivia(token.pre_trivia)?;
+        for t in &tokens {
+            match t {
+                TriviaToken::LineComment(s)
+                | TriviaToken::MultilineComment(s)
+                | TriviaToken::InlineCCode(s) => self.e.comment(s),
+                TriviaToken::Newline => {}
+            }
+        }
+        Ok(())
+    }
+
     fn emit_toplevel_declaration(&mut self, td: &TopLevelDeclaration) -> R {
         match td {
-            TopLevelDeclaration::VclVersion { number: v, .. } => {
-                self.emit_vcl_version(v.content)?;
+            TopLevelDeclaration::VclVersion { vcl, number, semi } => {
+                self.emit_vcl_version(vcl, number, semi)?
             }
-            TopLevelDeclaration::Import { name, from, .. } => {
-                self.emit_import(name.content, from.as_ref())?
-            }
+            TopLevelDeclaration::Import {
+                import,
+                name,
+                from,
+                semi,
+            } => self.emit_import(import, name, from.as_ref(), semi)?,
             TopLevelDeclaration::Include(i) => self.emit_include(i)?,
-            TopLevelDeclaration::Acl { name, entries, .. } => {
-                self.emit_acl(name.content, entries)?
-            }
+            TopLevelDeclaration::Acl {
+                acl,
+                name,
+                lbrace,
+                entries,
+                rbrace,
+            } => self.emit_acl(acl, name, lbrace, entries, rbrace)?,
             TopLevelDeclaration::Backend(b) => self.emit_backend(b)?,
             TopLevelDeclaration::Probe {
-                name, properties, ..
-            } => self.emit_probe(name.content, properties)?,
+                probe,
+                name,
+                lbrace,
+                properties,
+                rbrace,
+            } => self.emit_probe(probe, name, lbrace, properties, rbrace)?,
             TopLevelDeclaration::Sub {
-                name, statements, ..
-            } => self.emit_sub(name.content, statements)?,
+                sub,
+                name,
+                lbrace,
+                statements,
+                rbrace,
+            } => self.emit_sub(sub, name, lbrace, statements, rbrace)?,
         };
 
         Ok(())
     }
 
-    fn emit_vcl_version(&mut self, v: &str) -> R {
+    fn emit_vcl_version(&mut self, vcl: &TokenData, number: &TokenData, semi: &TokenData) -> R {
+        self.emit_all_trivia(vcl)?;
+        self.emit_comments(number)?;
+        self.emit_comments(semi)?;
+
         self.e.vcl_keyword();
-        self.e.number(v);
+        self.e.number(number.content);
         self.e.semicolon();
+
         Ok(())
     }
 
-    fn emit_import(&mut self, name: &str, from: Option<&FromData>) -> R {
+    fn emit_import(
+        &mut self,
+        import: &TokenData,
+        name: &TokenData,
+        from: Option<&FromData>,
+        semi: &TokenData,
+    ) -> R {
+        self.emit_all_trivia(import)?;
+        self.emit_comments(name)?;
+        if let Some(FromData { value, from }) = from {
+            self.emit_comments(from)?;
+            self.emit_comments(value)?;
+        }
+        self.emit_comments(semi)?;
+
         self.e.import_keyword();
-        self.e.ident(name);
-        if let Some(FromData { value: f, .. }) = from {
+        self.e.ident(name.content);
+        if let Some(FromData { value, .. }) = from {
             self.e.from_keyword();
-            self.e.string(f.content);
+            self.e.string(value.content);
         }
         self.e.semicolon();
+
         Ok(())
     }
 
     fn emit_include(&mut self, inc: &IncludeData) -> R {
+        self.emit_all_trivia(&inc.include)?;
+        self.emit_comments(&inc.name)?;
+        self.emit_comments(&inc.semi)?;
+
         self.e.include_keyword();
         self.e.string(inc.name.content);
         self.e.semicolon();
+
         Ok(())
     }
 
-    fn emit_acl(&mut self, name: &str, entries: &Vec<AclEntry>) -> R {
+    fn emit_acl(
+        &mut self,
+        acl: &TokenData,
+        name: &TokenData,
+        lbrace: &TokenData,
+        entries: &Vec<AclEntry>,
+        rbrace: &TokenData,
+    ) -> R {
+        self.emit_all_trivia(acl)?;
+        self.emit_comments(name)?;
+        self.emit_comments(lbrace)?;
+
         self.e.acl_keyword();
-        self.e.ident(name);
+        self.e.ident(name.content);
         self.e.body_start();
         for entry in entries {
             self.emit_acl_entry(entry)?;
         }
+
+        self.emit_all_trivia(rbrace)?;
         self.e.body_end();
+
         Ok(())
     }
 
     fn emit_acl_entry(&mut self, e: &AclEntry) -> R {
+        self.emit_all_trivia(&e.value)?;
+        if let Some(m) = &e.mask {
+            self.emit_comments(&m.op)?;
+            self.emit_comments(&m.mask)?;
+        }
+        self.emit_comments(&e.semi)?;
+
         self.e.string(e.value.content);
         if let Some(m) = &e.mask {
             self.e.infix_operator("/");
             self.e.number(m.mask.content);
         }
         self.e.semicolon();
+
         Ok(())
     }
 
-    fn emit_probe(&mut self, name: &str, properties: &Vec<BackendProperty>) -> R {
+    fn emit_probe(
+        &mut self,
+        probe: &TokenData,
+        name: &TokenData,
+        lbrace: &TokenData,
+        properties: &Vec<BackendProperty>,
+        rbrace: &TokenData,
+    ) -> R {
+        self.emit_all_trivia(probe)?;
+        self.emit_comments(name)?;
+        self.emit_comments(lbrace)?;
+
         self.e.probe_keyword();
-        self.e.ident(name);
+        self.e.ident(name.content);
         self.e.body_start();
         for prop in properties {
-            self.emit_backend_property(prop.name.content, &prop.value)?;
+            self.emit_backend_property(&prop.name, &prop.op, &prop.value)?;
         }
+
+        self.emit_all_trivia(rbrace)?;
         self.e.body_end();
+
         Ok(())
     }
 
-    fn emit_backend_property(&mut self, name: &str, value: &BackendValue) -> R {
-        self.e.ident(name);
+    fn emit_backend_property(
+        &mut self,
+        name: &TokenData,
+        op: &TokenData,
+        value: &BackendValue,
+    ) -> R {
+        self.emit_all_trivia(name)?;
+        self.emit_comments(op)?;
+        match &value {
+            BackendValue::Expression { expr, semi } => {} // TODO:
+            BackendValue::Composite { lbrace, .. } => self.emit_comments(lbrace)?,
+            _ => {}
+        }
+
+        self.e.ident(name.content);
         self.e.infix_operator("=");
         match &value {
-            BackendValue::Expression(e) => {
-                self.emit_expression(e)?;
+            BackendValue::Expression { expr, semi } => {
+                self.emit_expression(expr)?;
                 self.e.semicolon();
             }
             BackendValue::Composite { properties, .. } => {
                 self.e.body_start();
                 for prop in properties {
-                    self.emit_backend_property(prop.name.content, &prop.value)?;
+                    self.emit_backend_property(&prop.name, &prop.op, &prop.value)?;
                 }
                 self.e.body_end();
             }
-            BackendValue::StringList(l) => {
-                for val in l {
+            BackendValue::StringList { strings, semi } => {
+                self.e.hint_string_list_start();
+                for val in strings {
+                    self.emit_all_trivia(val)?;
                     self.e.string(val.content);
                 }
                 self.e.semicolon();
             }
         };
+
         Ok(())
     }
 
+    // TODO: trivia
     fn emit_expression(&mut self, expr: &Expression) -> R {
         match expr {
             Expression::Ident(i) => self.e.ident(i.content),
@@ -169,6 +309,7 @@ impl<'a> AstEmitter<'a> {
         Ok(())
     }
 
+    // TODO: trivia
     fn emit_ident_call(&mut self, e: &IdentCallExpression) -> R {
         self.e.ident(e.name.content);
         self.e.l_paren();
@@ -193,70 +334,134 @@ impl<'a> AstEmitter<'a> {
     }
 
     fn emit_backend(&mut self, b: &BackendData) -> R {
-        self.e.backend_keyword();
         match b {
-            BackendData::None { name, .. } => {
+            BackendData::None {
+                backend,
+                name,
+                none,
+                semi,
+            } => {
+                self.emit_all_trivia(backend)?;
+                self.emit_comments(name)?;
+                self.emit_comments(none)?;
+                self.emit_comments(semi)?;
+
+                self.e.backend_keyword();
                 self.e.ident(name.content);
                 self.e.none_keyword();
                 self.e.semicolon();
             }
             BackendData::Defined {
-                name, properties, ..
+                backend,
+                name,
+                lbrace,
+                properties,
+                rbrace,
             } => {
+                self.emit_all_trivia(backend)?;
+                self.emit_comments(name)?;
+                self.emit_comments(lbrace)?;
+
+                self.e.backend_keyword();
                 self.e.ident(name.content);
                 self.e.body_start();
                 for prop in properties {
-                    self.emit_backend_property(prop.name.content, &prop.value)?;
+                    self.emit_backend_property(&prop.name, &prop.op, &prop.value)?;
                 }
+
+                self.emit_all_trivia(rbrace)?;
                 self.e.body_end();
             }
         };
+
         Ok(())
     }
 
-    fn emit_sub(&mut self, name: &str, statements: &Vec<Statement>) -> R {
+    fn emit_sub(
+        &mut self,
+        sub: &TokenData,
+        name: &TokenData,
+        lbrace: &TokenData,
+        statements: &Vec<Statement>,
+        rbrace: &TokenData,
+    ) -> R {
+        self.emit_all_trivia(sub)?;
+        self.emit_comments(name)?;
+        self.emit_comments(lbrace)?;
+
         self.e.sub_keyword();
-        self.e.ident(name);
+        self.e.ident(name.content);
         self.e.body_start();
         for st in statements {
             self.emit_statement(st)?;
         }
+
+        self.emit_all_trivia(rbrace)?;
         self.e.body_end();
+
         Ok(())
     }
 
     fn emit_statement(&mut self, st: &Statement) -> R {
         match st {
             Statement::Set {
-                ident, op, expr, ..
+                set,
+                ident,
+                op,
+                expr,
+                semi,
             } => {
+                self.emit_all_trivia(set)?;
+                self.emit_comments(ident)?;
+                self.emit_comments(op)?;
+                self.emit_comments(semi)?;
+
                 self.e.set_keyword();
                 self.e.ident(ident.content);
                 self.e.infix_operator(op.content);
                 self.emit_expression(expr)?;
                 self.e.semicolon();
             }
-            Statement::Unset { ident, .. } => {
+            Statement::Unset { unset, ident, semi } => {
+                self.emit_all_trivia(unset)?;
+                self.emit_comments(ident)?;
+                self.emit_comments(semi)?;
+
                 self.e.unset_keyword();
                 self.e.ident(ident.content);
                 self.e.semicolon();
             }
-            Statement::Call { ident, .. } => {
+            Statement::Call { call, ident, semi } => {
+                self.emit_all_trivia(call)?;
+                self.emit_comments(ident)?;
+                self.emit_comments(semi)?;
+
                 self.e.call_keyword();
                 self.e.ident(ident.content);
                 self.e.semicolon();
             }
-            Statement::IdentCall(i) => {
-                self.emit_ident_call(i)?;
+            Statement::IdentCall { expr, semi } => {
+                self.emit_comments(semi)?;
+
+                self.emit_ident_call(expr)?;
                 self.e.semicolon();
             }
             Statement::If {
+                if_t,
+                lparen,
                 condition,
+                rparen,
+                lbrace,
                 body,
+                rbrace,
                 elseifs,
                 else_st,
-                ..
             } => {
+                self.emit_all_trivia(if_t)?;
+                self.emit_comments(lparen)?;
+                self.emit_comments(rparen)?;
+                self.emit_comments(lbrace)?;
+
                 self.e.if_keyword();
                 self.e.l_paren();
                 self.emit_expression(condition)?;
@@ -265,6 +470,7 @@ impl<'a> AstEmitter<'a> {
                 for st in body {
                     self.emit_statement(st)?;
                 }
+                self.emit_all_trivia(rbrace)?;
                 for ei in elseifs {
                     self.e.body_end();
                     self.e.else_keyword();
@@ -273,21 +479,54 @@ impl<'a> AstEmitter<'a> {
                     self.emit_expression(&ei.condition)?;
                     self.e.r_paren();
                     self.e.body_start();
+
+                    for t in &ei.elseif {
+                        self.emit_comments(t)?;
+                    }
+                    self.emit_comments(&ei.lparen)?;
+                    self.emit_comments(&ei.rparen)?;
+                    self.emit_comments(&ei.lbrace)?;
+
                     for st in &ei.body {
                         self.emit_statement(st);
                     }
+
+                    self.emit_all_trivia(&ei.rbrace)?;
                 }
                 if let Some(e) = else_st {
                     self.e.body_end();
                     self.e.else_keyword();
                     self.e.body_start();
+
+                    self.emit_comments(&e.else_t)?;
+                    self.emit_comments(&e.lbrace)?;
+
                     for st in &e.body {
                         self.emit_statement(st);
                     }
+
+                    self.emit_all_trivia(&e.rbrace)?;
                 }
                 self.e.body_end();
             }
-            Statement::Return { name, args, .. } => {
+            Statement::Return {
+                return_t,
+                lparen,
+                name,
+                args,
+                rparen,
+                semi,
+            } => {
+                self.emit_all_trivia(return_t)?;
+                self.emit_comments(lparen)?;
+                self.emit_comments(name)?;
+                if let Some(args) = args {
+                    self.emit_comments(&args.lparen)?;
+                    self.emit_comments(&args.rparen)?;
+                }
+                self.emit_comments(rparen)?;
+                self.emit_comments(semi)?;
+
                 self.e.return_keyword();
                 self.e.l_paren();
                 self.e.ident(name.content);
@@ -307,7 +546,18 @@ impl<'a> AstEmitter<'a> {
                 self.e.r_paren();
                 self.e.semicolon();
             }
-            Statement::New { name, value, .. } => {
+            Statement::New {
+                new,
+                name,
+                op,
+                value,
+                semi,
+            } => {
+                self.emit_all_trivia(new);
+                self.emit_comments(name)?;
+                self.emit_comments(op)?;
+                self.emit_comments(semi)?;
+
                 self.e.new_keyword();
                 self.e.ident(name.content);
                 self.e.infix_operator("=");
