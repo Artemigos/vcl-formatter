@@ -9,6 +9,11 @@ pub fn lex<'a>(data_str: &'a str) -> Result<Vec<Token<'a>>, ()> {
     iter.collect()
 }
 
+pub fn lex_trivia<'a>(data_str: &'a str) -> Result<Vec<TriviaToken<'a>>, ()> {
+    let mut lex = TriviaToken::lexer(data_str);
+    lex.collect()
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct TokenData<'a> {
     pub content: &'a str,
@@ -265,6 +270,22 @@ pub enum Token<'a> {
     Newline,
 
     EOF(TokenData<'a>),
+}
+
+#[derive(Logos, Debug, PartialEq, Copy, Clone)]
+#[logos(skip r"[ \t]+")]
+pub enum TriviaToken<'a> {
+    #[regex(r"(//|#).*")]
+    LineComment(&'a str),
+
+    #[regex(r"/\*([^*]|\*[^/])*\*/")]
+    MultilineComment(&'a str),
+
+    #[regex(r#"C\{([^\}]|\}[^C])*\}C"#)]
+    InlineCCode(&'a str),
+
+    #[regex(r"(\r\n|\n|\r)")]
+    Newline,
 }
 
 pub fn get_token_data<'a>(t: Token<'a>) -> Option<TokenData<'a>> {
