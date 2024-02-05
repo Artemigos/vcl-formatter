@@ -247,9 +247,17 @@ impl<'a> AstEmitter<'a> {
         self.emit_all_trivia(name)?;
         self.emit_comments(op)?;
         match &value {
-            BackendValue::Expression { expr, semi } => {} // TODO:
+            BackendValue::Expression { expr, semi } => {
+                self.emit_expression_comments(expr)?;
+                self.emit_comments(semi)?;
+            }
             BackendValue::Composite { lbrace, .. } => self.emit_comments(lbrace)?,
-            _ => {}
+            BackendValue::StringList { strings, semi } => {
+                for val in strings {
+                    self.emit_comments(val)?;
+                }
+                self.emit_comments(semi)?;
+            }
         }
 
         self.e.ident(name.content);
@@ -259,17 +267,20 @@ impl<'a> AstEmitter<'a> {
                 self.emit_expression(expr)?;
                 self.e.semicolon();
             }
-            BackendValue::Composite { properties, .. } => {
+            BackendValue::Composite {
+                properties, rbrace, ..
+            } => {
                 self.e.body_start();
                 for prop in properties {
                     self.emit_backend_property(&prop.name, &prop.op, &prop.value)?;
                 }
+
+                self.emit_all_trivia(rbrace)?;
                 self.e.body_end();
             }
-            BackendValue::StringList { strings, semi } => {
+            BackendValue::StringList { strings, .. } => {
                 self.e.hint_string_list_start();
                 for val in strings {
-                    self.emit_all_trivia(val)?;
                     self.e.string(val.content);
                 }
                 self.e.semicolon();
@@ -279,7 +290,61 @@ impl<'a> AstEmitter<'a> {
         Ok(())
     }
 
-    // TODO: trivia
+    fn emit_expression_comments(&mut self, expr: &Expression) -> R {
+        match expr {
+            Expression::Ident(i) => self.emit_comments(i)?,
+            Expression::Literal(l) => self.emit_comments(l)?,
+            Expression::Neg { op, expr } => {
+                self.emit_comments(op)?;
+                self.emit_expression_comments(expr)?;
+            }
+            Expression::Binary { left, op, right } => {
+                self.emit_expression_comments(left)?;
+                self.emit_comments(op)?;
+                self.emit_expression_comments(right)?;
+            }
+            Expression::IdentCall(c) => self.emit_ident_call_trivia(c, false)?,
+            Expression::Parenthesized {
+                lparen,
+                expr,
+                rparen,
+            } => {
+                self.emit_comments(lparen)?;
+                self.emit_expression_comments(expr)?;
+                self.emit_comments(rparen)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn emit_ident_call_trivia(
+        &mut self,
+        expr: &IdentCallExpression,
+        emit_all_from_first: bool,
+    ) -> R {
+        if emit_all_from_first {
+            self.emit_all_trivia(&expr.name)?;
+        } else {
+            self.emit_comments(&expr.name)?;
+        }
+        self.emit_comments(&expr.lparen)?;
+        for arg in &expr.args {
+            // TODO: commas
+            match arg {
+                FunctionCallArg::Named { name, op, value } => {
+                    self.emit_comments(name)?;
+                    self.emit_comments(op)?;
+                    self.emit_expression_comments(value)?;
+                }
+                FunctionCallArg::Positional(e) => {
+                    self.emit_expression_comments(e)?;
+                }
+            }
+        }
+        self.emit_comments(&expr.rparen)?;
+        Ok(())
+    }
+
     fn emit_expression(&mut self, expr: &Expression) -> R {
         match expr {
             Expression::Ident(i) => self.e.ident(i.content),
@@ -309,7 +374,6 @@ impl<'a> AstEmitter<'a> {
         Ok(())
     }
 
-    // TODO: trivia
     fn emit_ident_call(&mut self, e: &IdentCallExpression) -> R {
         self.e.ident(e.name.content);
         self.e.l_paren();
@@ -414,6 +478,7 @@ impl<'a> AstEmitter<'a> {
                 self.emit_all_trivia(set)?;
                 self.emit_comments(ident)?;
                 self.emit_comments(op)?;
+                self.emit_expression_comments(expr)?;
                 self.emit_comments(semi)?;
 
                 self.e.set_keyword();
@@ -441,6 +506,7 @@ impl<'a> AstEmitter<'a> {
                 self.e.semicolon();
             }
             Statement::IdentCall { expr, semi } => {
+                self.emit_ident_call_trivia(expr, true)?;
                 self.emit_comments(semi)?;
 
                 self.emit_ident_call(expr)?;
@@ -459,6 +525,7 @@ impl<'a> AstEmitter<'a> {
             } => {
                 self.emit_all_trivia(if_t)?;
                 self.emit_comments(lparen)?;
+                self.emit_expression_comments(condition)?;
                 self.emit_comments(rparen)?;
                 self.emit_comments(lbrace)?;
 
@@ -484,6 +551,7 @@ impl<'a> AstEmitter<'a> {
                         self.emit_comments(t)?;
                     }
                     self.emit_comments(&ei.lparen)?;
+                    self.emit_expression_comments(&ei.condition)?;
                     self.emit_comments(&ei.rparen)?;
                     self.emit_comments(&ei.lbrace)?;
 
@@ -522,6 +590,9 @@ impl<'a> AstEmitter<'a> {
                 self.emit_comments(name)?;
                 if let Some(args) = args {
                     self.emit_comments(&args.lparen)?;
+                    for e in &args.args {
+                        self.emit_expression_comments(e)?;
+                    }
                     self.emit_comments(&args.rparen)?;
                 }
                 self.emit_comments(rparen)?;
@@ -534,6 +605,7 @@ impl<'a> AstEmitter<'a> {
                     self.e.l_paren();
                     let mut first = true;
                     for arg in &args.args {
+                        // TODO: commas
                         if first {
                             first = false;
                         } else {
@@ -556,6 +628,7 @@ impl<'a> AstEmitter<'a> {
                 self.emit_all_trivia(new);
                 self.emit_comments(name)?;
                 self.emit_comments(op)?;
+                self.emit_ident_call_trivia(value, false)?;
                 self.emit_comments(semi)?;
 
                 self.e.new_keyword();
