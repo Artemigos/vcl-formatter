@@ -2,6 +2,7 @@
 mod ast;
 mod ast_emitter;
 mod emitter;
+mod error;
 mod lexer;
 mod parser;
 
