@@ -1,8 +1,8 @@
 use logos::{Lexer, Logos, Skip};
 
 pub fn lex<'a>(data_str: &'a str) -> Result<Vec<Token<'a>>, ()> {
-    let mut lex = Token::lexer(data_str);
-    let mut iter = TokenIter {
+    let lex = Token::lexer(data_str);
+    let iter = TokenIter {
         lex,
         lex_done: false,
     };
@@ -10,7 +10,7 @@ pub fn lex<'a>(data_str: &'a str) -> Result<Vec<Token<'a>>, ()> {
 }
 
 pub fn lex_trivia<'a>(data_str: &'a str) -> Result<Vec<TriviaToken<'a>>, ()> {
-    let mut lex = TriviaToken::lexer(data_str);
+    let lex = TriviaToken::lexer(data_str);
     lex.collect()
 }
 
@@ -286,71 +286,4 @@ pub enum TriviaToken<'a> {
 
     #[regex(r"(\r\n|\n|\r)")]
     Newline,
-}
-
-pub fn get_token_data<'a>(t: Token<'a>) -> Option<TokenData<'a>> {
-    match t {
-        Token::Acl(x) => Some(x),
-        Token::Vcl(x) => Some(x),
-        Token::Import(x) => Some(x),
-        Token::Include(x) => Some(x),
-        Token::From(x) => Some(x),
-        Token::Probe(x) => Some(x),
-        Token::Backend(x) => Some(x),
-        Token::None(x) => Some(x),
-        Token::Sub(x) => Some(x),
-        Token::Set(x) => Some(x),
-        Token::Call(x) => Some(x),
-        Token::Unset(x) => Some(x),
-        Token::If(x) => Some(x),
-        Token::Else(x) => Some(x),
-        Token::ElseIf(x) => Some(x),
-        Token::Return(x) => Some(x),
-        Token::New(x) => Some(x),
-        Token::Bool(x) => Some(x),
-        Token::Number(x) => Some(x),
-        Token::Duration(x) => Some(x),
-        Token::Bytes(x) => Some(x),
-        Token::String(x) => Some(x),
-        Token::Ident(x) => Some(x),
-        Token::BackendPropIdent(x) => Some(x),
-        Token::Semicolon(x) => Some(x),
-        Token::LBrace(x) => Some(x),
-        Token::RBrace(x) => Some(x),
-        Token::LParen(x) => Some(x),
-        Token::RParen(x) => Some(x),
-        Token::Negate(x) => Some(x),
-        Token::Assign(x) => Some(x),
-        Token::Plus(x) => Some(x),
-        Token::Minus(x) => Some(x),
-        Token::Multiply(x) => Some(x),
-        Token::Divide(x) => Some(x),
-        Token::Comma(x) => Some(x),
-        Token::Or(x) => Some(x),
-        Token::And(x) => Some(x),
-        Token::Equals(x) => Some(x),
-        Token::NotEquals(x) => Some(x),
-        Token::Matches(x) => Some(x),
-        Token::Greater(x) => Some(x),
-        Token::Lesser(x) => Some(x),
-        Token::GreaterEquals(x) => Some(x),
-        Token::LesserEquals(x) => Some(x),
-        Token::Increment(x) => Some(x),
-        Token::Decrement(x) => Some(x),
-        Token::ShiftLeft(x) => Some(x),
-        Token::ShiftRight(x) => Some(x),
-        Token::AddAssign(x) => Some(x),
-        Token::SubtractAssign(x) => Some(x),
-        Token::MultiplyAssign(x) => Some(x),
-        Token::DivideAssign(x) => Some(x),
-        Token::NotMatches(x) => Some(x),
-        Token::Modulo(x) => Some(x),
-        Token::BitwiseAnd(x) => Some(x),
-        Token::BitwiseOr(x) => Some(x),
-        Token::LineComment => None,
-        Token::MultilineComment => None,
-        Token::InlineCCode => None,
-        Token::Newline => None,
-        Token::EOF(x) => Some(x),
-    }
 }

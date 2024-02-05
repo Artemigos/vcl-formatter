@@ -3,13 +3,12 @@ use std::io::Write;
 use crate::{
     ast::*,
     emitter::Emitter,
-    lexer::{lex_trivia, Token, TokenData, TriviaToken},
+    lexer::{lex_trivia, TokenData, TriviaToken},
 };
 
 #[derive(Debug)]
 pub enum E {
     IO(std::io::Error),
-    ExpectedInlineToken,
     LexingWhitespaceFailed,
 }
 
@@ -20,7 +19,7 @@ impl From<std::io::Error> for E {
 }
 
 impl From<()> for E {
-    fn from(value: ()) -> Self {
+    fn from(_: ()) -> Self {
         E::LexingWhitespaceFailed
     }
 }
@@ -33,7 +32,7 @@ pub struct AstEmitter<'a> {
 
 impl<'a> AstEmitter<'a> {
     pub fn new(writer: &'a mut dyn Write, indent: usize) -> Self {
-        let mut e = crate::emitter::StandardEmitter::new(writer, indent);
+        let e = crate::emitter::StandardEmitter::new(writer, indent);
         Self { e }
     }
 
@@ -263,7 +262,7 @@ impl<'a> AstEmitter<'a> {
         self.e.ident(name.content);
         self.e.infix_operator("=");
         match &value {
-            BackendValue::Expression { expr, semi } => {
+            BackendValue::Expression { expr, .. } => {
                 self.emit_expression(expr)?;
                 self.e.semicolon();
             }
@@ -361,11 +360,7 @@ impl<'a> AstEmitter<'a> {
             Expression::IdentCall(e) => {
                 self.emit_ident_call(e)?;
             }
-            Expression::Parenthesized {
-                lparen,
-                expr,
-                rparen,
-            } => {
+            Expression::Parenthesized { expr, .. } => {
                 self.e.l_paren();
                 self.emit_expression(expr)?;
                 self.e.r_paren();
@@ -556,7 +551,7 @@ impl<'a> AstEmitter<'a> {
                     self.emit_comments(&ei.lbrace)?;
 
                     for st in &ei.body {
-                        self.emit_statement(st);
+                        self.emit_statement(st)?;
                     }
 
                     self.emit_all_trivia(&ei.rbrace)?;
@@ -570,7 +565,7 @@ impl<'a> AstEmitter<'a> {
                     self.emit_comments(&e.lbrace)?;
 
                     for st in &e.body {
-                        self.emit_statement(st);
+                        self.emit_statement(st)?;
                     }
 
                     self.emit_all_trivia(&e.rbrace)?;
@@ -625,7 +620,7 @@ impl<'a> AstEmitter<'a> {
                 value,
                 semi,
             } => {
-                self.emit_all_trivia(new);
+                self.emit_all_trivia(new)?;
                 self.emit_comments(name)?;
                 self.emit_comments(op)?;
                 self.emit_ident_call_trivia(value, false)?;

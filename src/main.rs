@@ -1,5 +1,3 @@
-#![allow(unused)]
-#![warn(unused_results)]
 
 mod ast;
 mod ast_emitter;
@@ -10,7 +8,6 @@ mod parser;
 use std::io::Read;
 
 use clap::Parser as ClapParser;
-use logos::Logos;
 
 #[cfg(test)]
 const EXAMPLE: &[u8] = include_bytes!("../example.vcl");
@@ -44,5 +41,5 @@ fn main() {
 
     let mut stdout = std::io::stdout().lock();
     let mut emitter = ast_emitter::AstEmitter::new(&mut stdout, args.indent);
-    emitter.emit(&ast);
+    emitter.emit(&ast).unwrap();
 }
