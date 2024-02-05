@@ -374,6 +374,8 @@ impl<'a> Emitter for StandardEmitter<'a> {
 mod test {
     use crate::emitter::Emitter;
 
+    const EXAMPLE: &[u8] = include_bytes!("../example.vcl");
+
     #[test]
     fn emit_example_vcl() -> crate::error::R {
         let buf: Vec<u8> = Vec::new();
@@ -1120,7 +1122,7 @@ mod test {
 
         e.file_end()?;
 
-        assert_eq!(writer.buffer(), crate::EXAMPLE);
+        assert_eq!(writer.buffer(), EXAMPLE);
         Ok(())
     }
 }

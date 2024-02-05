@@ -10,9 +10,6 @@ use std::io::Read;
 
 use clap::Parser as ClapParser;
 
-#[cfg(test)]
-const EXAMPLE: &[u8] = include_bytes!("../example.vcl");
-
 /// Formatter for VCL code
 #[derive(ClapParser, Debug)]
 #[command(author, version, about, long_about = None)]
