@@ -10,6 +10,7 @@ pub trait Emitter {
     fn string(&mut self, string: &str) -> R;
     fn import_keyword(&mut self) -> R;
     fn ident(&mut self, ident: &str) -> R;
+    #[allow(clippy::wrong_self_convention)]
     fn from_keyword(&mut self) -> R;
     fn probe_keyword(&mut self) -> R;
     fn body_start(&mut self) -> R;
