@@ -1,4 +1,6 @@
 PREFIX := /usr/bin
+FILE := example.vcl
+I := 4
 
 target/release/vcl-formatter: src/*.rs Cargo.toml Cargo.lock
 	cargo build --release
@@ -19,3 +21,7 @@ uninstall:
 bench: target/release/vcl-formatter
 	hyperfine -N --warmup 5 './target/release/vcl-formatter example.vcl'
 .PHONY: bench
+
+diff:
+	cargo run -- -i "$(I)" "$(FILE)" | diff -u --color "$(FILE)" -
+.PHONY: diff
