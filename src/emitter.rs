@@ -115,7 +115,7 @@ impl<'a> StandardEmitter<'a> {
     }
 
     fn last_nest(&self) -> usize {
-        if self.materialized_nest_levels.len() == 0 {
+        if self.materialized_nest_levels.is_empty() {
             0
         } else {
             self.materialized_nest_levels[self.materialized_nest_levels.len() - 1]

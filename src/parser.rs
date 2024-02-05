@@ -60,7 +60,7 @@ peg::parser! {
         rule modulo() -> TokenData<'a> = [Token::Modulo(d)] {d}
         rule bitwiseAnd() -> TokenData<'a> = [Token::BitwiseAnd(d)] {d}
         rule bitwiseOr() -> TokenData<'a> = [Token::BitwiseOr(d)] {d}
-        rule eof() -> TokenData<'a> = [Token::EOF(d)] {d}
+        rule eof() -> TokenData<'a> = [Token::Eof(d)] {d}
 
         rule assign_op() -> TokenData<'a>
             = assign()

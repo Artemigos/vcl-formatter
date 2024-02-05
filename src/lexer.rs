@@ -1,6 +1,6 @@
 use logos::{Lexer, Logos, Skip};
 
-pub fn lex<'a>(data_str: &'a str) -> Result<Vec<Token<'a>>, ()> {
+pub fn lex(data_str: &str) -> Result<Vec<Token<'_>>, ()> {
     let lex = Token::lexer(data_str);
     let iter = TokenIter {
         lex,
@@ -9,7 +9,7 @@ pub fn lex<'a>(data_str: &'a str) -> Result<Vec<Token<'a>>, ()> {
     iter.collect()
 }
 
-pub fn lex_trivia<'a>(data_str: &'a str) -> Result<Vec<TriviaToken<'a>>, ()> {
+pub fn lex_trivia(data_str: &str) -> Result<Vec<TriviaToken<'_>>, ()> {
     let lex = TriviaToken::lexer(data_str);
     lex.collect()
 }
@@ -51,7 +51,7 @@ impl<'a> Iterator for TokenIter<'a> {
                 column: self.lex.source().len() - self.lex.extras.last_line_end + 1,
                 pre_trivia: final_trivia,
             };
-            Some(Ok(Token::EOF(data)))
+            Some(Ok(Token::Eof(data)))
         }
     }
 }
@@ -269,7 +269,7 @@ pub enum Token<'a> {
     #[regex(r"(\r\n|\n|\r)", newline_callback)]
     Newline,
 
-    EOF(TokenData<'a>),
+    Eof(TokenData<'a>),
 }
 
 #[derive(Logos, Debug, PartialEq, Copy, Clone)]
