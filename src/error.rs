@@ -2,6 +2,7 @@
 pub enum E {
     IO(std::io::Error),
     LexingWhitespaceFailed,
+    ParsingFailed,
 }
 
 impl From<std::io::Error> for E {
@@ -13,6 +14,12 @@ impl From<std::io::Error> for E {
 impl From<()> for E {
     fn from(_: ()) -> Self {
         E::LexingWhitespaceFailed
+    }
+}
+
+impl<'a> From<peg::error::ParseError<usize>> for E {
+    fn from(_: peg::error::ParseError<usize>) -> Self {
+        E::ParsingFailed
     }
 }
 

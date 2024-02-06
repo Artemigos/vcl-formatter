@@ -6,9 +6,10 @@ mod error;
 mod lexer;
 mod parser;
 
-use std::io::Read;
+use std::io::{Read, Write};
 
 use clap::Parser as ClapParser;
+use error::R;
 
 /// Formatter for VCL code
 #[derive(ClapParser, Debug)]
@@ -34,10 +35,14 @@ fn main() {
     };
 
     let data_str = std::str::from_utf8(&data).unwrap();
-    let tokens = lexer::lex(data_str).unwrap();
-    let ast = parser::vcl::source_file(&tokens).unwrap();
-
     let mut stdout = std::io::stdout().lock();
-    let mut emitter = ast_emitter::AstEmitter::new(&mut stdout, args.indent);
-    emitter.emit(&ast).unwrap();
+    process_vcl(data_str, args.indent, &mut stdout).unwrap();
+}
+
+fn process_vcl(data: &str, indent: usize, out: &mut dyn Write) -> R {
+    let tokens = lexer::lex(data)?;
+    let ast = parser::vcl::source_file(&tokens)?;
+    let mut emitter = ast_emitter::AstEmitter::new(out, indent);
+    emitter.emit(&ast)?;
+    Ok(())
 }
