@@ -1,5 +1,5 @@
 PREFIX := /usr/bin
-FILE := example.vcl
+FILE := tests/files/example/good.vcl
 I := 4
 
 target/release/vcl-formatter: src/*.rs Cargo.toml Cargo.lock
@@ -19,7 +19,7 @@ uninstall:
 .PHONY: uninstall
 
 bench: target/release/vcl-formatter
-	hyperfine -N --warmup 5 './target/release/vcl-formatter example.vcl'
+	hyperfine -N --warmup 5 "./target/release/vcl-formatter $(FILE)"
 .PHONY: bench
 
 diff:
