@@ -35,6 +35,8 @@ pub trait Emitter {
     fn newlines(&mut self, how_many: usize) -> R;
     fn file_end(&mut self) -> R;
     fn hint_string_list_start(&mut self);
+    fn hint_increase_nest(&mut self);
+    fn hint_decrease_nest(&mut self);
 }
 
 pub struct StandardEmitter<'a> {
@@ -368,5 +370,13 @@ impl<'a> Emitter for StandardEmitter<'a> {
     fn hint_string_list_start(&mut self) {
         self.in_string_list = true;
         self.increase_nest();
+    }
+
+    fn hint_increase_nest(&mut self) {
+        self.increase_nest();
+    }
+
+    fn hint_decrease_nest(&mut self) {
+        self.decrease_nest();
     }
 }

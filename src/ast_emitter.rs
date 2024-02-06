@@ -61,6 +61,18 @@ impl<'a> AstEmitter<'a> {
         Ok(())
     }
 
+    fn emit_newlines(&mut self, token: &TokenData) -> R {
+        let tokens = lex_trivia(token.pre_trivia)?;
+        let newline_count = tokens
+            .iter()
+            .filter(|x| matches!(x, TriviaToken::Newline))
+            .count();
+        if newline_count > 0 {
+            self.e.newlines(newline_count)?;
+        }
+        Ok(())
+    }
+
     fn emit_toplevel_declaration(&mut self, td: &TopLevelDeclaration) -> R {
         match td {
             TopLevelDeclaration::VclVersion { vcl, number, semi } => {
@@ -244,7 +256,7 @@ impl<'a> AstEmitter<'a> {
         self.e.infix_operator("=")?;
         match &value {
             BackendValue::Expression { expr, .. } => {
-                self.emit_expression(expr)?;
+                self.emit_expression(expr, true)?;
                 self.e.semicolon()?;
             }
             BackendValue::Composite {
@@ -325,32 +337,53 @@ impl<'a> AstEmitter<'a> {
         Ok(())
     }
 
-    fn emit_expression(&mut self, expr: &Expression) -> R {
+    fn emit_expression(&mut self, expr: &Expression, root: bool) -> R {
+        if root {
+            self.e.hint_increase_nest();
+        }
         match expr {
-            Expression::Ident(i) => self.e.ident(i.content)?,
-            Expression::Literal(l) => self.e.ident(l.content)?,
-            Expression::Neg { expr, .. } => {
+            Expression::Ident(i) => {
+                self.emit_newlines(i)?;
+                self.e.ident(i.content)?;
+            }
+            Expression::Literal(l) => {
+                self.emit_newlines(l)?;
+                self.e.ident(l.content)?;
+            }
+            Expression::Neg { op, expr } => {
+                self.emit_newlines(op)?;
                 self.e.prefix_operator("!")?;
-                self.emit_expression(expr)?;
+                self.emit_expression(expr, false)?;
             }
             Expression::Binary { left, op, right } => {
-                self.emit_expression(left)?;
+                self.emit_expression(left, false)?;
+                self.emit_newlines(op)?;
                 self.e.infix_operator(op.content)?;
-                self.emit_expression(right)?;
+                self.emit_expression(right, false)?;
             }
             Expression::IdentCall(e) => {
                 self.emit_ident_call(e)?;
             }
-            Expression::Parenthesized { expr, .. } => {
+            Expression::Parenthesized {
+                lparen,
+                expr,
+                rparen,
+            } => {
+                self.emit_newlines(lparen)?;
                 self.e.l_paren()?;
-                self.emit_expression(expr)?;
+                self.emit_expression(expr, false)?;
+                self.emit_newlines(rparen)?;
                 self.e.r_paren()?;
             }
         };
+        if root {
+            self.e.hint_decrease_nest();
+        }
         Ok(())
     }
 
     fn emit_ident_call(&mut self, e: &IdentCallExpression) -> R {
+        self.emit_newlines(&e.name)?;
         self.e.ident(e.name.content)?;
         self.e.l_paren()?;
         let mut first = true;
@@ -362,13 +395,15 @@ impl<'a> AstEmitter<'a> {
             };
             match arg {
                 FunctionCallArg::Named { name, value, .. } => {
+                    self.emit_newlines(name)?;
                     self.e.ident(name.content)?;
                     self.e.infix_operator("=")?;
-                    self.emit_expression(value)?;
+                    self.emit_expression(value, true)?;
                 }
-                FunctionCallArg::Positional(p) => self.emit_expression(p)?,
+                FunctionCallArg::Positional(p) => self.emit_expression(p, true)?,
             };
         }
+        self.emit_newlines(&e.rparen)?;
         self.e.r_paren()?;
         Ok(())
     }
@@ -460,7 +495,7 @@ impl<'a> AstEmitter<'a> {
                 self.e.set_keyword()?;
                 self.e.ident(ident.content)?;
                 self.e.infix_operator(op.content)?;
-                self.emit_expression(expr)?;
+                self.emit_expression(expr, true)?;
                 self.e.semicolon()?;
             }
             Statement::Unset { unset, ident, semi } => {
@@ -507,7 +542,8 @@ impl<'a> AstEmitter<'a> {
 
                 self.e.if_keyword()?;
                 self.e.l_paren()?;
-                self.emit_expression(condition)?;
+                self.emit_expression(condition, true)?;
+                self.emit_newlines(rparen)?;
                 self.e.r_paren()?;
                 self.e.body_start()?;
                 for st in body {
@@ -519,7 +555,8 @@ impl<'a> AstEmitter<'a> {
                     self.e.else_keyword()?;
                     self.e.if_keyword()?;
                     self.e.l_paren()?;
-                    self.emit_expression(&ei.condition)?;
+                    self.emit_expression(&ei.condition, true)?;
+                    self.emit_newlines(&ei.rparen)?;
                     self.e.r_paren()?;
                     self.e.body_start()?;
 
@@ -576,8 +613,10 @@ impl<'a> AstEmitter<'a> {
 
                 self.e.return_keyword()?;
                 self.e.l_paren()?;
+                self.emit_newlines(name)?;
                 self.e.ident(name.content)?;
                 if let Some(args) = args {
+                    self.emit_newlines(&args.lparen)?;
                     self.e.l_paren()?;
                     let mut first = true;
                     for arg in &args.args {
@@ -587,10 +626,12 @@ impl<'a> AstEmitter<'a> {
                         } else {
                             self.e.comma()?;
                         };
-                        self.emit_expression(arg)?;
+                        self.emit_expression(arg, true)?;
                     }
+                    self.emit_newlines(&args.rparen)?;
                     self.e.r_paren()?;
                 }
+                self.emit_newlines(rparen)?;
                 self.e.r_paren()?;
                 self.e.semicolon()?;
             }

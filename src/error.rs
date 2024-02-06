@@ -17,7 +17,7 @@ impl From<()> for E {
     }
 }
 
-impl<'a> From<peg::error::ParseError<usize>> for E {
+impl From<peg::error::ParseError<usize>> for E {
     fn from(_: peg::error::ParseError<usize>) -> Self {
         E::ParsingFailed
     }
