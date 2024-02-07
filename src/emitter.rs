@@ -35,8 +35,9 @@ pub trait Emitter {
     fn newlines(&mut self, how_many: usize) -> R;
     fn file_end(&mut self) -> R;
     fn hint_string_list_start(&mut self);
-    fn hint_increase_nest(&mut self);
-    fn hint_decrease_nest(&mut self);
+    fn hint_expression_tree_start(&mut self);
+    fn hint_expression_tree_end(&mut self);
+    fn hint_allow_line_break(&mut self);
 }
 
 pub struct StandardEmitter<'a> {
@@ -281,6 +282,7 @@ impl<'a> Emitter for StandardEmitter<'a> {
     fn r_paren(&mut self) -> R {
         self.needs_whitespace = false;
         self.decrease_nest();
+        self.flush_preceding_whitespace()?;
         write!(self.write, ")")?;
 
         Ok(())
@@ -372,11 +374,15 @@ impl<'a> Emitter for StandardEmitter<'a> {
         self.increase_nest();
     }
 
-    fn hint_increase_nest(&mut self) {
+    fn hint_expression_tree_start(&mut self) {
         self.increase_nest();
     }
 
-    fn hint_decrease_nest(&mut self) {
+    fn hint_expression_tree_end(&mut self) {
         self.decrease_nest();
+    }
+
+    fn hint_allow_line_break(&mut self) {
+        self.allow_line_break = true;
     }
 }

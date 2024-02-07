@@ -339,7 +339,7 @@ impl<'a> AstEmitter<'a> {
 
     fn emit_expression(&mut self, expr: &Expression, root: bool) -> R {
         if root {
-            self.e.hint_increase_nest();
+            self.e.hint_expression_tree_start();
         }
         match expr {
             Expression::Ident(i) => {
@@ -372,12 +372,13 @@ impl<'a> AstEmitter<'a> {
                 self.emit_newlines(lparen)?;
                 self.e.l_paren()?;
                 self.emit_expression(expr, false)?;
+                self.e.hint_allow_line_break();
                 self.emit_newlines(rparen)?;
                 self.e.r_paren()?;
             }
         };
         if root {
-            self.e.hint_decrease_nest();
+            self.e.hint_expression_tree_end();
         }
         Ok(())
     }
@@ -403,6 +404,7 @@ impl<'a> AstEmitter<'a> {
                 FunctionCallArg::Positional(p) => self.emit_expression(p, true)?,
             };
         }
+        self.e.hint_allow_line_break();
         self.emit_newlines(&e.rparen)?;
         self.e.r_paren()?;
         Ok(())
@@ -543,6 +545,7 @@ impl<'a> AstEmitter<'a> {
                 self.e.if_keyword()?;
                 self.e.l_paren()?;
                 self.emit_expression(condition, true)?;
+                self.e.hint_allow_line_break();
                 self.emit_newlines(rparen)?;
                 self.e.r_paren()?;
                 self.e.body_start()?;
@@ -556,6 +559,7 @@ impl<'a> AstEmitter<'a> {
                     self.e.if_keyword()?;
                     self.e.l_paren()?;
                     self.emit_expression(&ei.condition, true)?;
+                    self.e.hint_allow_line_break();
                     self.emit_newlines(&ei.rparen)?;
                     self.e.r_paren()?;
                     self.e.body_start()?;
@@ -628,9 +632,11 @@ impl<'a> AstEmitter<'a> {
                         };
                         self.emit_expression(arg, true)?;
                     }
+                    self.e.hint_allow_line_break();
                     self.emit_newlines(&args.rparen)?;
                     self.e.r_paren()?;
                 }
+                self.e.hint_allow_line_break();
                 self.emit_newlines(rparen)?;
                 self.e.r_paren()?;
                 self.e.semicolon()?;
