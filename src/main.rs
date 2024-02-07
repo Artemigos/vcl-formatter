@@ -1,3 +1,5 @@
+#![warn(clippy::unwrap_used)]
+#![warn(clippy::expect_used)]
 
 mod ast;
 mod ast_emitter;
@@ -24,19 +26,20 @@ struct Args {
     indent: usize,
 }
 
-fn main() {
+fn main() -> R {
     let args = Args::parse();
     let data = if args.file == "-" {
         let mut buf = Vec::new();
-        let _ = std::io::stdin().lock().read_to_end(&mut buf);
+        std::io::stdin().lock().read_to_end(&mut buf)?;
         buf
     } else {
-        std::fs::read(args.file.as_str()).unwrap()
+        std::fs::read(args.file.as_str())?
     };
 
-    let data_str = std::str::from_utf8(&data).unwrap();
+    let data_str = std::str::from_utf8(&data)?;
     let mut stdout = std::io::stdout().lock();
-    process_vcl(data_str, args.indent, &mut stdout).unwrap();
+    process_vcl(data_str, args.indent, &mut stdout)?;
+    Ok(())
 }
 
 fn process_vcl(data: &str, indent: usize, out: &mut dyn Write) -> R {

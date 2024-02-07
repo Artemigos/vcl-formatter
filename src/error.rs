@@ -1,7 +1,8 @@
 #[derive(Debug)]
 pub enum E {
     IO(std::io::Error),
-    LexingWhitespaceFailed,
+    InputEncodingError,
+    LexingFailed,
     ParsingFailed,
 }
 
@@ -13,13 +14,19 @@ impl From<std::io::Error> for E {
 
 impl From<()> for E {
     fn from(_: ()) -> Self {
-        E::LexingWhitespaceFailed
+        E::LexingFailed
     }
 }
 
 impl From<peg::error::ParseError<usize>> for E {
     fn from(_: peg::error::ParseError<usize>) -> Self {
         E::ParsingFailed
+    }
+}
+
+impl From<std::str::Utf8Error> for E {
+    fn from(_: std::str::Utf8Error) -> Self {
+        E::InputEncodingError
     }
 }
 
