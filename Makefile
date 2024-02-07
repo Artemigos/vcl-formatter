@@ -1,12 +1,8 @@
 PREFIX := /usr/bin
+FILE := tests/files/example/good.vcl
+I := 4
 
-vendor/varnishls/vendor/tree-sitter-vcl/bindings:
-	rm -rf vendor
-	mkdir -p vendor
-	cd vendor && git clone -q --depth 1 --branch "v0.0.10" https://github.com/M4R7iNP/varnishls.git
-	cd vendor/varnishls && make tree-sitter-vcl
-
-target/release/vcl-formatter: vendor/varnishls/vendor/tree-sitter-vcl/bindings src/*.rs Cargo.toml Cargo.lock
+target/release/vcl-formatter: src/*.rs Cargo.toml Cargo.lock
 	cargo build --release
 
 build: target/release/vcl-formatter
@@ -21,3 +17,11 @@ install: $(PREFIX)/vcl-formatter
 uninstall:
 	rm -f "$(PREFIX)/vcl-formatter"
 .PHONY: uninstall
+
+bench: target/release/vcl-formatter
+	hyperfine -N --warmup 5 "./target/release/vcl-formatter $(FILE)"
+.PHONY: bench
+
+diff:
+	cargo run -- -i "$(I)" "$(FILE)" | diff -u --color "$(FILE)" -
+.PHONY: diff

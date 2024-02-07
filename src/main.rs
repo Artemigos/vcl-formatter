@@ -1,14 +1,15 @@
-mod emitter;
-mod visitor;
 
-use std::io::Read;
+mod ast;
+mod ast_emitter;
+mod emitter;
+mod error;
+mod lexer;
+mod parser;
+
+use std::io::{Read, Write};
 
 use clap::Parser as ClapParser;
-use tree_sitter::Parser;
-use tree_sitter_vcl;
-
-#[cfg(test)]
-const EXAMPLE: &[u8] = include_bytes!("../example.vcl");
+use error::R;
 
 /// Formatter for VCL code
 #[derive(ClapParser, Debug)]
@@ -33,12 +34,15 @@ fn main() {
         std::fs::read(args.file.as_str()).unwrap()
     };
 
-    let lang = tree_sitter_vcl::language();
-    let mut parser = Parser::new();
-    parser.set_language(lang).unwrap();
-    let tree = parser.parse(&data, None).unwrap();
-
+    let data_str = std::str::from_utf8(&data).unwrap();
     let mut stdout = std::io::stdout().lock();
-    let mut e = emitter::StandardEmitter::new(&mut stdout, args.indent);
-    visitor::visit_tree(&tree, &data, &mut e);
+    process_vcl(data_str, args.indent, &mut stdout).unwrap();
+}
+
+fn process_vcl(data: &str, indent: usize, out: &mut dyn Write) -> R {
+    let tokens = lexer::lex(data)?;
+    let ast = parser::vcl::source_file(&tokens)?;
+    let mut emitter = ast_emitter::AstEmitter::new(out, indent);
+    emitter.emit(&ast)?;
+    Ok(())
 }
