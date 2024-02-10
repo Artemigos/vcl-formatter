@@ -3,6 +3,15 @@ use crate::lexer::{Token, TokenData};
 
 peg::parser! {
     pub grammar vcl<'a>() for [Token<'a>] {
+        rule list<I, S>(item: rule<I>, sep: rule<S>) -> DelimitedList<I, S>
+            = items:(i:item() s:sep() { (i, s) })* last:item() {
+                DelimitedList::WithItems {
+                    pairs: items,
+                    last_item: last,
+                }
+            }
+            / {DelimitedList::Empty}
+
         rule acl() -> TokenData<'a> = [Token::Acl(d)] {d}
         rule vcl() -> TokenData<'a> = [Token::Vcl(d)] {d}
         rule import() -> TokenData<'a> = [Token::Import(d)] {d}
@@ -150,9 +159,8 @@ peg::parser! {
             / e:expression() {FunctionCallArg::Positional(e)}
 
         rule ident_call_expr() -> IdentCallExpression<'a>
-            = name:ident() lparen:lParen() args:function_call_arg()**(comma()) rparen:rParen() {
-                // TODO: commas
-                IdentCallExpression { name, lparen, args, commas: vec![], rparen }
+            = name:ident() lparen:lParen() args:list(<function_call_arg()>, <comma()>) rparen:rParen() {
+                IdentCallExpression { name, lparen, args: Box::new(args), rparen }
             }
 
         rule string_list() -> Vec<TokenData<'a>>
@@ -231,9 +239,8 @@ peg::parser! {
             }
 
         rule return_args() -> ReturnArgs<'a>
-            = lparen:lParen() args:expression()**(comma()) rparen:rParen() {
-                // TODO: commas
-                ReturnArgs { lparen, args, commas: vec![], rparen }
+            = lparen:lParen() args:list(<expression()>, <comma()>) rparen:rParen() {
+                ReturnArgs { lparen, args, rparen }
             }
 
         rule return_statement() -> Statement<'a>

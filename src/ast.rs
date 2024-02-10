@@ -133,16 +133,14 @@ pub struct ElseStatement<'a> {
 pub struct IdentCallExpression<'a> {
     pub name: TokenData<'a>,
     pub lparen: TokenData<'a>,
-    pub args: Vec<FunctionCallArg<'a>>,
-    pub commas: Vec<TokenData<'a>>,
+    pub args: Box<DelimitedList<FunctionCallArg<'a>, TokenData<'a>>>,
     pub rparen: TokenData<'a>,
 }
 
 #[derive(Debug)]
 pub struct ReturnArgs<'a> {
     pub lparen: TokenData<'a>,
-    pub args: Vec<Expression<'a>>,
-    pub commas: Vec<TokenData<'a>>,
+    pub args: DelimitedList<Expression<'a>, TokenData<'a>>,
     pub rparen: TokenData<'a>,
 }
 
@@ -227,4 +225,68 @@ pub enum FunctionCallArg<'a> {
         value: Expression<'a>,
     },
     Positional(Expression<'a>),
+}
+
+#[derive(Debug)]
+pub enum DelimitedList<Item, Separator> {
+    Empty,
+    WithItems {
+        pairs: Vec<(Item, Separator)>,
+        last_item: Item,
+    },
+}
+
+impl<Item, Separator> DelimitedList<Item, Separator> {
+    pub fn iter(&self) -> DelimitedListIterator<'_, Item, Separator> {
+        DelimitedListIterator {
+            list: self,
+            inner_iter: None,
+            done: false,
+        }
+    }
+}
+
+pub struct DelimitedListIterator<'a, Item, Separator> {
+    list: &'a DelimitedList<Item, Separator>,
+    inner_iter: Option<std::slice::Iter<'a, (Item, Separator)>>,
+    done: bool,
+}
+
+impl<'a, Item, Separator> Iterator for DelimitedListIterator<'a, Item, Separator> {
+    type Item = (&'a Item, Option<&'a Separator>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
+        }
+
+        match self.list {
+            DelimitedList::Empty => {
+                self.done = true;
+                None
+            }
+            DelimitedList::WithItems { pairs, last_item } => {
+                let inner_iter = {
+                    match &mut self.inner_iter {
+                        Some(i) => i,
+                        None => {
+                            self.inner_iter = Some(pairs.iter());
+                            match &mut self.inner_iter {
+                                Some(i) => i,
+                                None => panic!("should never happen, just set it to Some"),
+                            }
+                        }
+                    }
+                };
+                let inner_next = inner_iter.next();
+                match inner_next {
+                    Some(i) => Some((&i.0, Some(&i.1))),
+                    None => {
+                        self.done = true;
+                        Some((last_item, None))
+                    }
+                }
+            }
+        }
+    }
 }

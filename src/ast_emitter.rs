@@ -320,8 +320,7 @@ impl<'a> AstEmitter<'a> {
             self.emit_comments(&expr.name)?;
         }
         self.emit_comments(&expr.lparen)?;
-        for arg in &expr.args {
-            // TODO: commas
+        for (arg, comma) in expr.args.iter() {
             match arg {
                 FunctionCallArg::Named { name, op, value } => {
                     self.emit_comments(name)?;
@@ -331,6 +330,10 @@ impl<'a> AstEmitter<'a> {
                 FunctionCallArg::Positional(e) => {
                     self.emit_expression_comments(e)?;
                 }
+            }
+
+            if let Some(tok) = comma {
+                self.emit_comments(tok)?;
             }
         }
         self.emit_comments(&expr.rparen)?;
@@ -388,7 +391,7 @@ impl<'a> AstEmitter<'a> {
         self.e.ident(e.name.content)?;
         self.e.l_paren()?;
         let mut first = true;
-        for arg in &e.args {
+        for (arg, _) in e.args.iter() {
             if first {
                 first = false;
             } else {
@@ -607,8 +610,11 @@ impl<'a> AstEmitter<'a> {
                 self.emit_comments(name)?;
                 if let Some(args) = args {
                     self.emit_comments(&args.lparen)?;
-                    for e in &args.args {
+                    for (e, comma) in args.args.iter() {
                         self.emit_expression_comments(e)?;
+                        if let Some(tok) = comma {
+                            self.emit_comments(tok)?;
+                        }
                     }
                     self.emit_comments(&args.rparen)?;
                 }
@@ -623,8 +629,7 @@ impl<'a> AstEmitter<'a> {
                     self.emit_newlines(&args.lparen)?;
                     self.e.l_paren()?;
                     let mut first = true;
-                    for arg in &args.args {
-                        // TODO: commas
+                    for (arg, _) in args.args.iter() {
                         if first {
                             first = false;
                         } else {
