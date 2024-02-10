@@ -2,19 +2,14 @@
 pub enum E {
     IO(std::io::Error),
     InputEncodingError,
-    LexingFailed,
+    LexingFailed { line: usize, column: usize },
+    LexingTriviaFailed,
     ParsingFailed,
 }
 
 impl From<std::io::Error> for E {
     fn from(value: std::io::Error) -> Self {
         E::IO(value)
-    }
-}
-
-impl From<()> for E {
-    fn from(_: ()) -> Self {
-        E::LexingFailed
     }
 }
 

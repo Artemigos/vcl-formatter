@@ -1,6 +1,6 @@
 use logos::{Lexer, Logos, Skip};
 
-pub fn lex(data_str: &str) -> Result<Vec<Token<'_>>, ()> {
+pub fn lex(data_str: &str) -> Result<Vec<Token<'_>>, crate::error::E> {
     let lex = Token::lexer(data_str);
     let iter = TokenIter {
         lex,
@@ -9,8 +9,9 @@ pub fn lex(data_str: &str) -> Result<Vec<Token<'_>>, ()> {
     iter.collect()
 }
 
-pub fn lex_trivia(data_str: &str) -> Result<Vec<TriviaToken<'_>>, ()> {
-    let lex = TriviaToken::lexer(data_str);
+pub fn lex_trivia(data_str: &str) -> Result<Vec<TriviaToken<'_>>, crate::error::E> {
+    let lex =
+        TriviaToken::lexer(data_str).map(|x| x.map_err(|_| crate::error::E::LexingTriviaFailed));
     lex.collect()
 }
 
@@ -35,20 +36,27 @@ struct TokenIter<'a> {
 }
 
 impl<'a> Iterator for TokenIter<'a> {
-    type Item = Result<Token<'a>, ()>;
+    type Item = Result<Token<'a>, crate::error::E>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.lex_done {
             None
         } else if let Some(r) = self.lex.next() {
-            Some(r)
+            match r {
+                Ok(t) => Some(Ok(t)),
+                Err(_) => {
+                    let (line, column) = position(&self.lex, self.lex.span().start);
+                    Some(Err(crate::error::E::LexingFailed { line, column }))
+                }
+            }
         } else {
             self.lex_done = true;
             let final_trivia = &self.lex.source()[self.lex.extras.last_token_end..];
+            let (line, column) = position(&self.lex, self.lex.source().len());
             let data = TokenData {
                 content: "",
-                line: self.lex.extras.line + 1,
-                column: self.lex.source().len() - self.lex.extras.last_line_end + 1,
+                line,
+                column,
                 pre_trivia: final_trivia,
             };
             Some(Ok(Token::Eof(data)))
@@ -69,15 +77,21 @@ fn comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Skip {
 
 fn token_callback<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<TokenData<'a>> {
     let start = lex.span().start;
-    let column = start - lex.extras.last_line_end + 1;
+    let (line, column) = position(lex, start);
     let pre_trivia = &lex.source()[lex.extras.last_token_end..start];
     lex.extras.last_token_end = lex.span().end;
     Some(TokenData {
         content: lex.slice(),
-        line: lex.extras.line + 1,
+        line,
         column,
         pre_trivia,
     })
+}
+
+fn position<'a>(lex: &Lexer<'a, Token<'a>>, start: usize) -> (usize, usize) {
+    let column = start - lex.extras.last_line_end + 1;
+    let line = lex.extras.line + 1;
+    (line, column)
 }
 
 #[derive(Logos, Debug, PartialEq, Copy, Clone)]
