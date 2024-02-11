@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::error::*;
+use crate::error::R;
 
 pub trait Emitter {
     fn vcl_keyword(&mut self) -> R;
@@ -54,6 +54,12 @@ pub struct StandardEmitter<'a> {
     materialized_nest_levels: Vec<usize>,
 }
 
+macro_rules! w {
+    ($dst:expr, $($arg:tt)*) => {
+        $dst.write_fmt(format_args!($($arg)*)).map_err(crate::error::E::FailedToWriteOutput)
+    };
+}
+
 impl<'a> StandardEmitter<'a> {
     pub fn new(write: &'a mut dyn Write, indent_step: usize) -> Self {
         Self {
@@ -81,14 +87,14 @@ impl<'a> StandardEmitter<'a> {
                 self.materialized_nest_levels.push(self.nest_level);
             }
 
-            write!(
+            w!(
                 self.write,
                 "{:<i$}",
                 "",
                 i = self.indent_step * self.materialized_nest_levels.len()
             )?;
         } else if self.needs_whitespace {
-            write!(self.write, " ")?;
+            w!(self.write, " ")?;
         }
         self.new_line = false;
         self.needs_whitespace = false;
@@ -99,7 +105,7 @@ impl<'a> StandardEmitter<'a> {
     }
 
     fn line(&mut self) -> R {
-        writeln!(self.write)?;
+        w!(self.write, "\n")?;
         self.new_line = true;
         self.new_line_pending = false;
 
@@ -128,7 +134,7 @@ impl<'a> StandardEmitter<'a> {
 
     fn keyword(&mut self, kw: &str) -> R {
         self.flush_preceding_whitespace()?;
-        write!(self.write, "{kw}")?;
+        w!(self.write, "{kw}")?;
         self.needs_whitespace = true;
 
         Ok(())
@@ -143,14 +149,14 @@ impl<'a> Emitter for StandardEmitter<'a> {
 
     fn number(&mut self, num: &str) -> R {
         self.flush_preceding_whitespace()?;
-        write!(self.write, "{}", num)?;
+        w!(self.write, "{}", num)?;
 
         Ok(())
     }
 
     fn semicolon(&mut self) -> R {
         self.needs_whitespace = false;
-        write!(self.write, ";")?;
+        w!(self.write, ";")?;
         self.new_line_pending = true;
 
         if self.in_string_list {
@@ -171,7 +177,7 @@ impl<'a> Emitter for StandardEmitter<'a> {
             self.new_line_pending = true;
         }
         self.flush_preceding_whitespace()?;
-        write!(self.write, "{}", string)?;
+        w!(self.write, "{}", string)?;
         self.needs_whitespace = true;
 
         Ok(())
@@ -184,7 +190,7 @@ impl<'a> Emitter for StandardEmitter<'a> {
 
     fn ident(&mut self, ident: &str) -> R {
         self.flush_preceding_whitespace()?;
-        write!(self.write, "{}", ident)?;
+        w!(self.write, "{}", ident)?;
         self.needs_whitespace = true;
         self.ident_before_lparen = true;
 
@@ -203,7 +209,7 @@ impl<'a> Emitter for StandardEmitter<'a> {
 
     fn body_start(&mut self) -> R {
         self.needs_whitespace = false;
-        write!(self.write, " {{")?;
+        w!(self.write, " {{")?;
         self.new_line_pending = true;
         self.increase_nest();
 
@@ -213,7 +219,7 @@ impl<'a> Emitter for StandardEmitter<'a> {
     fn body_end(&mut self) -> R {
         self.decrease_nest();
         self.flush_preceding_whitespace()?;
-        write!(self.write, "}}")?;
+        w!(self.write, "}}")?;
         self.new_line_pending = true;
         self.in_acl = false;
 
@@ -222,7 +228,7 @@ impl<'a> Emitter for StandardEmitter<'a> {
 
     fn prefix_operator(&mut self, op: &str) -> R {
         self.flush_preceding_whitespace()?;
-        write!(self.write, "{}", op)?;
+        w!(self.write, "{}", op)?;
 
         Ok(())
     }
@@ -230,9 +236,9 @@ impl<'a> Emitter for StandardEmitter<'a> {
     fn infix_operator(&mut self, op: &str) -> R {
         self.needs_whitespace = false;
         if op == "/" && self.in_acl {
-            write!(self.write, "{op}")?;
+            w!(self.write, "{op}")?;
         } else {
-            write!(self.write, " {op}")?;
+            w!(self.write, " {op}")?;
             self.needs_whitespace = true;
             self.allow_line_break = true;
             self.ident_before_lparen = false;
@@ -273,7 +279,7 @@ impl<'a> Emitter for StandardEmitter<'a> {
             self.ident_before_lparen = false;
         }
         self.flush_preceding_whitespace()?;
-        write!(self.write, "(")?;
+        w!(self.write, "(")?;
         self.increase_nest();
 
         Ok(())
@@ -283,14 +289,14 @@ impl<'a> Emitter for StandardEmitter<'a> {
         self.needs_whitespace = false;
         self.decrease_nest();
         self.flush_preceding_whitespace()?;
-        write!(self.write, ")")?;
+        w!(self.write, ")")?;
 
         Ok(())
     }
 
     fn comma(&mut self) -> R {
         self.needs_whitespace = false;
-        write!(self.write, ",")?;
+        w!(self.write, ",")?;
         self.needs_whitespace = true;
         self.allow_line_break = true;
 
@@ -328,7 +334,7 @@ impl<'a> Emitter for StandardEmitter<'a> {
         self.new_line_pending = false;
         self.needs_whitespace = true;
         self.flush_preceding_whitespace()?;
-        write!(self.write, "{}", comment)?;
+        w!(self.write, "{}", comment)?;
         self.new_line_pending = true;
 
         Ok(())

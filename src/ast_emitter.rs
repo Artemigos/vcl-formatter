@@ -3,7 +3,7 @@ use std::io::Write;
 use crate::{
     ast::*,
     emitter::Emitter,
-    error::*,
+    error::R,
     lexer::{lex_trivia, TokenData, TriviaToken},
 };
 

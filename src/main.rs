@@ -30,10 +30,13 @@ fn main() -> R {
     let args = Args::parse();
     let data = if args.file == "-" {
         let mut buf = Vec::new();
-        std::io::stdin().lock().read_to_end(&mut buf)?;
+        std::io::stdin()
+            .lock()
+            .read_to_end(&mut buf)
+            .map_err(crate::error::E::FailedToReadInput)?;
         buf
     } else {
-        std::fs::read(args.file.as_str())?
+        std::fs::read(args.file.as_str()).map_err(crate::error::E::FailedToReadInput)?
     };
 
     let data_str = std::str::from_utf8(&data)?;
