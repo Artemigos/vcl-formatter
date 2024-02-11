@@ -3,20 +3,22 @@ use std::fmt::Debug;
 pub enum E {
     IO(std::io::Error),
     InputEncodingError,
-    LexingFailed { line: usize, column: usize },
+    LexingFailed {
+        line: usize,
+        column: usize,
+    },
     LexingTriviaFailed,
-    ParsingFailed,
+    ParsingFailed {
+        token: String,
+        line: usize,
+        column: usize,
+    },
+    ParsingTriviaFailed,
 }
 
 impl From<std::io::Error> for E {
     fn from(value: std::io::Error) -> Self {
         E::IO(value)
-    }
-}
-
-impl From<peg::error::ParseError<usize>> for E {
-    fn from(_: peg::error::ParseError<usize>) -> Self {
-        E::ParsingFailed
     }
 }
 
@@ -47,9 +49,18 @@ impl Debug for E {
                 f.write_str("Failed to lex trivia - this is likely a bug")?;
                 Ok(())
             }
-            E::ParsingFailed => {
-                // TODO: error should include this
-                f.write_str("Unexpected token \"???\" (line=???, column=???)")?;
+            E::ParsingFailed {
+                token,
+                line,
+                column,
+            } => {
+                f.write_fmt(format_args!(
+                    "Unexpected token \"{token}\" (line={line}, column={column})"
+                ))?;
+                Ok(())
+            }
+            E::ParsingTriviaFailed => {
+                f.write_str("Failed to parse trivia - this is likely a bug")?;
                 Ok(())
             }
         }

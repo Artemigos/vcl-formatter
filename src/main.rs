@@ -44,7 +44,7 @@ fn main() -> R {
 
 fn process_vcl(data: &str, indent: usize, out: &mut dyn Write) -> R {
     let tokens = lexer::lex(data)?;
-    let ast = parser::vcl::source_file(&tokens)?;
+    let ast = parser::parse(&tokens)?;
     let mut emitter = ast_emitter::AstEmitter::new(out, indent);
     emitter.emit(&ast)?;
     Ok(())

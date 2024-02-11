@@ -2,7 +2,7 @@ use crate::ast::*;
 use crate::lexer::{Token, TokenData};
 
 peg::parser! {
-    pub grammar vcl<'a>() for [Token<'a>] {
+    pub(super) grammar vcl<'a>() for [Token<'a>] {
         rule list<I, S>(item: rule<I>, sep: rule<S>) -> DelimitedList<I, S>
             = items:(i:item() s:sep() { (i, s) })* last:item() {
                 DelimitedList::WithItems {
@@ -274,9 +274,88 @@ peg::parser! {
             / probe_decl()
             / sub_decl()
 
-        pub rule source_file() -> SourceFile<'a>
+        pub(super) rule source_file() -> SourceFile<'a>
             = declarations:top_level_declaration()* eof:eof() {
                 SourceFile { declarations, eof }
             }
+    }
+}
+
+pub fn parse<'a>(tokens: &'a [Token<'a>]) -> Result<SourceFile, crate::error::E> {
+    let result = vcl::source_file(tokens);
+    match result {
+        Ok(f) => Ok(f),
+        Err(e) => {
+            let tok = tokens[e.location];
+            let (token, position) = match tok {
+                Token::Acl(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Vcl(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Import(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Include(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::From(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Probe(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Backend(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::None(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Sub(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Set(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Call(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Unset(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::If(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Else(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::ElseIf(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Return(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::New(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Bool(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Number(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Duration(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Bytes(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::String(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Ident(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::BackendPropIdent(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Semicolon(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::LBrace(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::RBrace(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::LParen(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::RParen(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Negate(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Assign(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Plus(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Minus(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Multiply(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Divide(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Comma(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Or(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::And(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Equals(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::NotEquals(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Matches(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Greater(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Lesser(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::GreaterEquals(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::LesserEquals(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Increment(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Decrement(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::ShiftLeft(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::ShiftRight(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::AddAssign(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::SubtractAssign(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::MultiplyAssign(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::DivideAssign(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::NotMatches(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Modulo(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::BitwiseAnd(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::BitwiseOr(d) => (d.content.to_string(), Some((d.line, d.column))),
+                Token::Eof(d) => (d.content.to_string(), Some((d.line, d.column))),
+                _ => ("".to_string(), None),
+            };
+            Err(match position {
+                Some((line, column)) => crate::error::E::ParsingFailed {
+                    token,
+                    line,
+                    column,
+                },
+                None => crate::error::E::ParsingTriviaFailed,
+            })
+        }
     }
 }
