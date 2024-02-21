@@ -163,7 +163,7 @@ pub enum Token<'a> {
 
     #[regex(r#""[^"\r\n]*""#, token_callback)]
     #[regex(r#""""([^"]|"[^"]|""[^"])*""""#, token_callback)]
-    #[regex(r#"\{"([^"]|"[^\}])*"\}"#, token_callback)]
+    #[regex(r#"\{"[^"]*"+(?:[^\}"][^"]*"+)*\}"#, token_callback)]
     String(TokenData<'a>),
 
     #[regex(r"[a-zA-Z_][\w\-]*(\.[a-zA-Z_][\w\-]*)*", token_callback)]
@@ -274,10 +274,10 @@ pub enum Token<'a> {
     #[regex(r"(//|#).*", comment)]
     LineComment,
 
-    #[regex(r"/\*([^*]|\*[^/])*\*/", comment)]
+    #[regex(r"/\*[^*]*\*+(?:[^/*][^*]*\*+)*/", comment)]
     MultilineComment,
 
-    #[regex(r#"C\{([^\}]|\}[^C])*\}C"#, comment)]
+    #[regex(r#"C\{[^\}]*\}+(?:[^C\}][^\}]*\}+)*C"#, comment)]
     InlineCCode,
 
     #[regex(r"(\r\n|\n|\r)", newline_callback)]
